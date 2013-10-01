@@ -3,29 +3,59 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     style="@style/AppTheme"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content" android:background="@color/dn_teal"
-    android:layout_margin="25dp">
+    android:layout_height="match_parent">
 
+    <ImageView
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:src="@drawable/home_bg"
+        android:scaleType="centerCrop" />
 
-<TextView
-        android:id="@+id/header"
-        android:background="@android:color/transparent"
+    <View
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_alignParentTop="true"
+        android:layout_above="@+id/sign_up"
+        android:background="@drawable/gradient" />
+
+
+    <View
+        android:id="@+id/center"
+        android:layout_width="match_parent"
+        android:layout_height="1px"
+        android:background="@android:color/transparent"
+        android:layout_centerInParent="true" />
+
+    <Button
+        android:id="@+id/sign_up"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Sign up for Updates."
+        android:layout_alignParentBottom="true"
+        android:textColor="@color/dn_white"
+        android:background="@color/dn_yellow" />
+
+    <TextView
+        android:id="@+id/header"
+        android:layout_width="match_parent"
+        android:background="@android:color/transparent"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/center"
         android:gravity="center"
-        android:textSize="64dp"
-        android:text="Time until DevNexus 2014"/>
+        android:layout_centerVertical="true"
+        android:textSize="32dp"
+        android:text="Time until DevNexus 2014"
+        android:textStyle="italic" />
 
 
     <TextView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@android:color/transparent"
-        android:layout_below="@id/header"
+        android:layout_below="@+id/header"
         android:gravity="center"
-        android:textSize="128dp"
+        android:textSize="96dp"
         android:id="@+id/countdown"
-        android:text="Too Long"/>
+        android:text="Too Long"
+        android:textStyle="bold" />
 
 </RelativeLayout>
