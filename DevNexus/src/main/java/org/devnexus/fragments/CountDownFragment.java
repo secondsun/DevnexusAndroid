@@ -21,7 +21,7 @@ public class CountDownFragment extends Fragment {
 
     {
         startDate.set(Calendar.YEAR, 2014);
-        startDate.set(Calendar.DATE, 17);
+        startDate.set(Calendar.DATE, 24);
         startDate.set(Calendar.MONTH, Calendar.FEBRUARY);
 
         daysUntil = (int) ((startDate.getTime().getTime() - Calendar.getInstance().getTime().getTime())/ DAY_IN_MILLIS );

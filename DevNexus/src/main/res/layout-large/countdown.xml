@@ -25,14 +25,12 @@
         android:background="@android:color/transparent"
         android:layout_centerInParent="true" />
 
-    <Button
+    <com.google.android.gms.common.SignInButton
         android:id="@+id/sign_up"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Sign up for Updates."
         android:layout_alignParentBottom="true"
-        android:textColor="@color/dn_white"
-        android:background="@color/dn_yellow" />
+        />
 
     <TextView
         android:id="@+id/header"
