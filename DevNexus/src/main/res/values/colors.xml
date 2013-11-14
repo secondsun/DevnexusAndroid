@@ -16,4 +16,19 @@
     <color name="dn_gray">#455159</color>
     <color name="dn_light_gray">#617784</color>
     <color name="dn_white">#ffffff</color>
+
+
+    <color name="track_1">#630d1a</color>
+    <color name="track_102">#44b75c</color>
+    <color name="track_2">#fd8c2a</color>
+    <color name="track_3">#7bb7cd</color>
+    <color name="track_4">#dbaa2e</color>
+    <color name="track_5">#297ca5</color>
+    <color name="track_6">#d14928</color>
+    <color name="track_7">#455159</color>
+    <color name="track_8">#A2285E</color>
+    <color name="track_9">#FF5D40</color>
+    <color name="track_10">#6A237E</color>
+    <color name="track_11">#589800</color>
+    
 </resources>
