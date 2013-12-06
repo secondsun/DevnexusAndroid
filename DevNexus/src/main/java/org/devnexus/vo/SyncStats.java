@@ -1,5 +1,7 @@
 package org.devnexus.vo;
 
+import org.jboss.aerogear.android.RecordId;
+
 import java.util.Date;
 
 /**
@@ -8,6 +10,16 @@ import java.util.Date;
 public class SyncStats {
 
 
+    @RecordId
+    private Long id = -1l;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
 
     private Date scheduleExpires = new Date();
     private Date calendarExpires = new Date();

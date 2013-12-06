@@ -1,5 +1,7 @@
 package org.devnexus.fragments;
 
+import android.app.Activity;
+import android.content.Context;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
@@ -17,33 +19,35 @@ import org.devnexus.vo.UserCalendarList;
  */
 public class ScheduleFragment extends Fragment {
 
+    private static final String CONTEXT = "org.devnexus.fragments.ScheduleFragment.CONTEXT";
     private ScheduleAdapter adapter;
+    private ListView view;
 
     public ScheduleFragment() {
+    }
 
+    @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+        if (adapter == null) {
+            adapter = new ScheduleAdapter(new Schedule(), new UserCalendarList(), activity.getApplicationContext());
+            ((DevnexusApplication)getActivity().getApplication()).getSchedule(adapter, this);
+        }
     }
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setRetainInstance(true);
-
     }
 
     public void onStart(){
         super.onStart();
-        ((DevnexusApplication)getActivity().getApplication()).getSchedule(adapter);
     }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-
-        adapter = new ScheduleAdapter(new Schedule(), new UserCalendarList(), inflater.getContext());
-
-        ListView view = new ListView(inflater.getContext());
-
-        view.setAdapter(adapter);
-
+            view = new ListView(inflater.getContext());
+            view.setAdapter(adapter);
         return view;
     }
 
