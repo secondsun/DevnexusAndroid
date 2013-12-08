@@ -4,8 +4,6 @@ import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.IntentSender;
 import android.os.Bundle;
-import android.os.Handler;
-import android.os.HandlerThread;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
@@ -13,14 +11,10 @@ import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.ViewPager;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarActivity;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
 
-import com.google.android.gms.auth.GoogleAuthException;
-import com.google.android.gms.auth.GoogleAuthUtil;
-import com.google.android.gms.auth.UserRecoverableAuthException;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient;
 import com.google.android.gms.plus.PlusClient;
@@ -30,10 +24,9 @@ import org.devnexus.fragments.CountDownFragment;
 import org.devnexus.fragments.ScheduleFragment;
 import org.devnexus.fragments.TracksFragment;
 import org.jboss.aerogear.android.Callback;
-import org.jboss.aerogear.android.authentication.AuthenticationConfig;
+import org.jboss.aerogear.android.authentication.AuthenticationModule;
 import org.jboss.aerogear.android.http.HeaderAndBody;
 
-import java.io.IOException;
 import java.util.HashMap;
 
 public class MainActivity extends ActionBarActivity implements ActionBar.TabListener,
@@ -48,6 +41,7 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
     private static final String SCOPES = "https://www.googleapis.com/auth/plus.login "
             + "https://www.googleapis.com/auth/userinfo.email "
             + "https://www.googleapis.com/auth/userinfo.profile";
+    private static final Integer REQUEST_AUTHORIZATION = 8000;
 
     private ProgressDialog mConnectionProgressDialog;
     private PlusClient mPlusClient;
@@ -205,24 +199,23 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
     @Override
     public void onConnected(Bundle connectionHint) {
         String accountName = mPlusClient.getAccountName();
-        
+
         Toast.makeText(this, accountName + " is connected.", Toast.LENGTH_LONG).show();
 
 
-
-        GooglePlusAuthenticationModule module = new GooglePlusAuthenticationModule(null, new AuthenticationConfig(), getApplicationContext());
+        AuthenticationModule module = ((DevnexusApplication) getApplication()).getAuth(this);
         HashMap<String, String> loginParams = new HashMap<String, String>();
-        loginParams.put(module.ACCOUNT_NAME, accountName);
-        loginParams.put(module.ACCOUNT_ID, accountId);
+        loginParams.put(GooglePlusAuthenticationModule.ACCOUNT_NAME, accountName);
+        loginParams.put(GooglePlusAuthenticationModule.ACCOUNT_ID, "");
         module.login(loginParams, new Callback<HeaderAndBody>() {
             @Override
             public void onSuccess(HeaderAndBody data) {
-
+                Toast.makeText(MainActivity.this, "Success", Toast.LENGTH_LONG).show();
             }
 
             @Override
             public void onFailure(Exception e) {
-
+                Toast.makeText(MainActivity.this, "Failure", Toast.LENGTH_LONG).show();
             }
         });
 

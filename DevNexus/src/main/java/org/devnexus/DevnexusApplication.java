@@ -13,6 +13,7 @@ import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 
 import org.devnexus.adapters.ScheduleAdapter;
+import org.devnexus.auth.GooglePlusAuthenticationModule;
 import org.devnexus.fragments.ScheduleFragment;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.SyncStats;
@@ -21,6 +22,9 @@ import org.devnexus.vo.UserCalendarList;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.DataManager;
 import org.jboss.aerogear.android.Pipeline;
+import org.jboss.aerogear.android.authentication.AuthenticationConfig;
+import org.jboss.aerogear.android.authentication.AuthenticationModule;
+import org.jboss.aerogear.android.authentication.impl.Authenticator;
 import org.jboss.aerogear.android.impl.datamanager.SQLStore;
 import org.jboss.aerogear.android.impl.datamanager.StoreConfig;
 import org.jboss.aerogear.android.impl.datamanager.StoreTypes;
@@ -28,11 +32,9 @@ import org.jboss.aerogear.android.impl.pipeline.GsonResponseParser;
 import org.jboss.aerogear.android.impl.pipeline.PipeConfig;
 import org.jboss.aerogear.android.pipeline.Pipe;
 
-import java.io.InputStreamReader;
 import java.lang.reflect.Type;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -50,7 +52,7 @@ public class DevnexusApplication extends Application {
     private SQLStore<Schedule> scheduleStore;
     private SQLStore<UserCalendarList> userCalendarStore;
     private SQLStore<SyncStats> statsStore;
-
+    private Authenticator authenticator = new Authenticator("http://192.168.1.194:8080");
 
 
     private GsonBuilder builder = new GsonBuilder();
@@ -64,7 +66,7 @@ public class DevnexusApplication extends Application {
 
     static {
         try {
-            DEVNEXUS_URL = new URL("http://www.devnexus.com/s/devnexus2013/");
+            DEVNEXUS_URL = new URL("http://192.168.1.194:8080/s/devnexus2013/");
         } catch (MalformedURLException e) {
             Log.e(TAG, e.getMessage(), e);
             throw new RuntimeException(e);
@@ -77,7 +79,8 @@ public class DevnexusApplication extends Application {
         builder.registerTypeAdapter(Date.class, new JsonDeserializer() {
             public Date deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
                 return new Date(json.getAsJsonPrimitive().getAsLong());
-            }});
+            }
+        });
 
         builder.registerTypeAdapter(Date.class, new JsonSerializer<Date>() {
             @Override
@@ -92,6 +95,21 @@ public class DevnexusApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
+
+        AuthenticationConfig config = new AuthenticationConfig();
+
+        config.setLoginEndpoint("s/loginAndroid.json");
+
+        GooglePlusAuthenticationModule module = null;
+        try {
+            module = new GooglePlusAuthenticationModule(new URL("http://192.168.1.194:8080/"), config, getApplicationContext());
+        } catch (MalformedURLException e) {
+            throw new RuntimeException(e);
+        }
+
+        authenticator.add("google", module);
+
+
         PipeConfig schedulePipeConfig = new PipeConfig(DEVNEXUS_URL, Schedule.class);
         schedulePipeConfig.setEndpoint("schedule.json");
         schedulePipeConfig.setName("schedule");
@@ -101,6 +119,7 @@ public class DevnexusApplication extends Application {
         PipeConfig userCalendarPipeConfig = new PipeConfig(DEVNEXUS_URL, UserCalendar.class);
         userCalendarPipeConfig.setEndpoint("calendar.json");
         userCalendarPipeConfig.setName("calendar");
+        userCalendarPipeConfig.setAuthModule(module);
         userCalendarPipeConfig.setResponseParser(new GsonResponseParser(builder.create()));
         userCalendarPipe = pipeline.pipe(UserCalendarList.class, userCalendarPipeConfig);
 
@@ -142,7 +161,12 @@ public class DevnexusApplication extends Application {
 
     public void getSchedule(final ScheduleAdapter adapter, ScheduleFragment scheduleFragment) {
         Schedule schedule;
-        UserCalendarList calendar = getCalendar();
+        UserCalendarList calendar = new UserCalendarList();
+        Collection<UserCalendarList> read = userCalendarStore.readAll();
+        if (read != null && read.size() > 0) {
+            calendar = read.iterator().next();
+        }
+
         Collection<SyncStats> stats = statsStore.readAll();
         if (stats.isEmpty()) {
             loadScheudle(adapter, scheduleFragment);
@@ -164,11 +188,11 @@ public class DevnexusApplication extends Application {
         schedule = scheduleList.iterator().next();
 
         adapter.update(schedule, calendar);
-        
+
     }
 
-    private void loadScheudle(final ScheduleAdapter adapter, ScheduleFragment scheduleFragment) {
-        final UserCalendarList calendar = getCalendar();
+    private void loadScheudle(final ScheduleAdapter adapter, final ScheduleFragment scheduleFragment) {
+
         schedulePipe = pipeline.get("schedule", scheduleFragment, getApplicationContext());
         schedulePipe.read(new Callback<List<Schedule>>() {
             @Override
@@ -177,14 +201,29 @@ public class DevnexusApplication extends Application {
                 scheduleStore.reset();
                 scheduleStore.save(schedule);
                 statsStore.reset();
-                SyncStats expiresTomorrow = new SyncStats();
-                Calendar tomorrow = Calendar.getInstance();
-                tomorrow.add(Calendar.DATE, 1);
-                expiresTomorrow.setScheduleExpires(tomorrow.getTime());
-                expiresTomorrow.setCalendarExpires(tomorrow.getTime());
-                statsStore.save(expiresTomorrow);
+                adapter.update(schedule, new UserCalendarList());
+                loadCalendar(adapter, scheduleFragment);
+            }
 
-                adapter.update(schedule, calendar);
+            @Override
+            public void onFailure(Exception e) {
+                Log.e("LOAD_CAL", e.getMessage(), e);
+            }
+        });
+    }
+
+    private void loadCalendar(final ScheduleAdapter adapter, ScheduleFragment scheduleFragment) {
+
+        userCalendarPipe = pipeline.get("calendar", scheduleFragment, getApplicationContext());
+        userCalendarPipe.read(new Callback<List<UserCalendarList>>() {
+            @Override
+            public void onSuccess(List<UserCalendarList> schedules) {
+                UserCalendarList schedule = schedules.get(0);
+                userCalendarStore.reset();
+                userCalendarStore.save(schedule);
+                statsStore.reset();
+                adapter.update(schedule);
+
             }
 
             @Override
@@ -195,19 +234,8 @@ public class DevnexusApplication extends Application {
     }
 
 
-    UserCalendarList getCalendar() {
-
-
-        // Creates the json object which will manage the information received
-        GsonBuilder builder = new GsonBuilder();
-        // Register an adapter to manage the date types as long values
-        builder.registerTypeAdapter(Date.class, new JsonDeserializer() {
-            public Date deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-                return new Date(json.getAsJsonPrimitive().getAsLong());
-            }
-        });
-
-        return builder.create().fromJson(new InputStreamReader(getResources().openRawResource(R.raw.calendar)), UserCalendarList.class);
+    public AuthenticationModule getAuth(MainActivity mainActivity) {
+        return authenticator.get("google", mainActivity);
     }
 
     private static class CountdownCallback implements Callback {
@@ -224,5 +252,5 @@ public class DevnexusApplication extends Application {
             latch.countDown();
         }
     }
-    
+
 }

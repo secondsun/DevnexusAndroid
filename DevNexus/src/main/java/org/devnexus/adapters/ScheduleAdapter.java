@@ -82,6 +82,23 @@ public class ScheduleAdapter extends BaseAdapter {
         super.notifyDataSetChanged();
     }
 
+    public void update(UserCalendarList calendar) {
+        Log.d(TAG, "Updating new data:" + calendar.userCalendarList.size());
+        this.calendar = calendar;
+        dayOne = schedule.scheduleItemList.days.get(0);
+        dayTwo = schedule.scheduleItemList.days.get(1);
+        dayOneSize = 0;
+        for (UserCalendar item : calendar.userCalendarList) {
+            if (item.fromTime.after(dayTwo)) {
+
+            } else {
+                dayOneSize++;
+            }
+        }
+
+        super.notifyDataSetChanged();
+    }
+
     @Override
     public int getCount() {
         return calendar.userCalendarList.size() + schedule.scheduleItemList.days.size();

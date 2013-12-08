@@ -2,7 +2,6 @@ package org.devnexus.auth;
 
 import android.content.Context;
 import android.os.Bundle;
-import android.text.TextUtils;
 import android.util.Log;
 
 import com.google.android.gms.auth.GoogleAuthException;
@@ -10,13 +9,18 @@ import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.UserRecoverableAuthException;
 
 import org.jboss.aerogear.android.Callback;
+import org.jboss.aerogear.android.Provider;
 import org.jboss.aerogear.android.authentication.AbstractAuthenticationModule;
 import org.jboss.aerogear.android.authentication.AuthenticationConfig;
 import org.jboss.aerogear.android.authentication.AuthorizationFields;
 import org.jboss.aerogear.android.http.HeaderAndBody;
 import org.jboss.aerogear.android.http.HttpException;
+import org.jboss.aerogear.android.http.HttpProvider;
+import org.jboss.aerogear.android.impl.core.HttpProviderFactory;
+import org.json.JSONObject;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
 import java.util.Map;
@@ -37,14 +41,20 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
     private final Context appContext;
     public static final String ACCOUNT_NAME = "GooglePlusAuthenticationModule.AccountName";
     public static final String ACCOUNT_ID = "GooglePlusAuthenticationModule.AccountId";
+    protected final Provider<HttpProvider> httpProviderFactory = new HttpProviderFactory();
+    private final int timeout;
+    private String cookie;
+    private boolean isLoggedIn = false;
+
 
     public GooglePlusAuthenticationModule(URL baseURL, AuthenticationConfig config, Context appContext) {
         this.baseURL = baseURL;
         this.loginEndpoint = config.getLoginEndpoint();
         this.logoutEndpoint = config.getLogoutEndpoint();
         this.appContext = appContext.getApplicationContext();
+        timeout = config.getTimeout();
     }
-    
+
 
     @Override
     public URL getBaseURL() {
@@ -61,6 +71,15 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
         return logoutEndpoint;
     }
 
+    private URL getLoginURL() {
+        try {
+            return new URL(baseURL + "/" + loginEndpoint);
+        } catch (MalformedURLException e) {
+            Log.e(TAG, e.getMessage(), e);
+            throw new RuntimeException(e);
+        }
+    }
+
     @Override
     public String getEnrollEndpoint() {
         return null;
@@ -73,18 +92,23 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
             public void run() {
                 try {
                     Bundle appActivities = new Bundle();
-                    appActivities.putString(GoogleAuthUtil.KEY_REQUEST_VISIBLE_ACTIVITIES,
-                            "http://schemas.google.com/AddActivity http://schemas.google.com/BuyActivity");
+                    appActivities.putString(GoogleAuthUtil.KEY_REQUEST_VISIBLE_ACTIVITIES, "");
 
 
                     final String accessToken = GoogleAuthUtil.getToken(appContext,
                             authMap.get(ACCOUNT_NAME),
-                            "oauth2:server:client_id:402595014005-cairesrhrd0p75jg62i8vdk4qteca2c4.apps.googleusercontent.com:api_scope:" + TextUtils.join(" ", SCOPES),
-                            appActivities);
-
-                    Log.d(TAG, String.format("curl -v -d '{\"gPlusId\":\"%s\",\"accessToken\":\"%s\"}' -X POST --header \"Content-Type:text/json\" http://localhost:8080/s/loginAndroid.json | json_reformat", authMap.get(ACCOUNT_ID), accessToken));
+                            "audience:server:client_id:402595014005-cairesrhrd0p75jg62i8vdk4qteca2c4.apps.googleusercontent.com",
+                            null);
 
 
+                    HttpProvider provider = httpProviderFactory.get(getLoginURL(), timeout);
+                    String loginRequest = new JSONObject(String.format("{\"gPlusId\":\"%s\",\"accessToken\":\"%s\"}", authMap.get(ACCOUNT_ID), accessToken)).toString();
+
+                    HeaderAndBody result = provider.post(loginRequest);
+                    cookie = result.getHeader("Set-Cookie").toString();
+                    isLoggedIn = true;
+
+                    headerAndBodyCallback.onSuccess(result);
 
                 } catch (IOException authEx) {
                     Log.e(TAG, authEx.getMessage(), authEx);
@@ -108,22 +132,24 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
 
     @Override
     public boolean isLoggedIn() {
-        return false;
+        return isLoggedIn;
     }
 
     @Override
     public AuthorizationFields getAuthorizationFields() {
-        throw new IllegalStateException("deprecated");
+        AuthorizationFields fields = new AuthorizationFields();
+        fields.addHeader("Cookie", cookie);
+        return fields;
     }
 
     @Override
-    public AuthorizationFields getAuthorizationFields(URI uri, String s, byte[] bytes) {
-        return null;
+    public AuthorizationFields getAuthorizationFields(URI requestUri, String method, byte[] requestBody) {
+        return getAuthorizationFields();
     }
 
     @Override
     public boolean retryLogin() throws HttpException {
-        return true;
+        return false;
     }
 
 
