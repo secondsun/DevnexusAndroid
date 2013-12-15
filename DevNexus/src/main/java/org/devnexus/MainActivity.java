@@ -23,6 +23,8 @@ import org.devnexus.auth.GooglePlusAuthenticationModule;
 import org.devnexus.fragments.CountDownFragment;
 import org.devnexus.fragments.ScheduleFragment;
 import org.devnexus.fragments.TracksFragment;
+import org.devnexus.service.ScheduleSyncService;
+import org.devnexus.util.AccountUtil;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.authentication.AuthenticationModule;
 import org.jboss.aerogear.android.http.HeaderAndBody;
@@ -30,10 +32,10 @@ import org.jboss.aerogear.android.http.HeaderAndBody;
 import java.util.HashMap;
 
 public class MainActivity extends ActionBarActivity implements ActionBar.TabListener,
-                                                               ViewPager.OnPageChangeListener,
-                                                               View.OnClickListener,
-                                                               GooglePlayServicesClient.ConnectionCallbacks,
-                                                               GooglePlayServicesClient.OnConnectionFailedListener {
+        ViewPager.OnPageChangeListener,
+        View.OnClickListener,
+        GooglePlayServicesClient.ConnectionCallbacks,
+        GooglePlayServicesClient.OnConnectionFailedListener {
 
     private static final String TAG = "MainActivity";
     private static final int REQUEST_CODE_RESOLVE_ERR = 9000;
@@ -51,12 +53,33 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+
+        mPlusClient = new PlusClient.Builder(this, this, this)
+                .setScopes(SCOPES)
+                .build();
+        // Progress bar to be displayed if the connection failure is not resolved.
+        mConnectionProgressDialog = new ProgressDialog(this);
+        mConnectionProgressDialog.setMessage("Signing in...");
+
+        if (AccountUtil.hasConnected(getApplicationContext())) {
+            showPager();
+        } else {
+            showSignIn();
+        }
+
+    }
+
+    private void showSignIn() {
+        setContentView(R.layout.sign_in_layout);
+        findViewById(R.id.sign_in_button).setOnClickListener(this);
+    }
+
+    private void showPager() {
+
         setContentView(R.layout.activity_main);
 
-        FragmentManager fm = getSupportFragmentManager();
-
         mViewPager = (ViewPager) findViewById(R.id.pager);
-        String homeScreenLabel;
 
         // Phone setup
         mViewPager.setAdapter(new HomePagerAdapter(getSupportFragmentManager()));
@@ -73,16 +96,6 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
         actionBar.addTab(actionBar.newTab()
                 .setText(R.string.title_social)
                 .setTabListener(this));
-
-        mPlusClient = new PlusClient.Builder(this, this, this)
-                .setScopes(SCOPES)
-                .build();
-        // Progress bar to be displayed if the connection failure is not resolved.
-        mConnectionProgressDialog = new ProgressDialog(this);
-        mConnectionProgressDialog.setMessage("Signing in...");
-
-
-
 
     }
 
@@ -152,13 +165,11 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
         public Fragment getItem(int position) {
             switch (position) {
                 case 0:
-                    return new CountDownFragment();
-
+                    return new ScheduleFragment();
                 case 1:
                     return new TracksFragment();
-
                 case 2:
-                    return new ScheduleFragment();
+                    return new CountDownFragment();
             }
             return null;
         }
@@ -172,6 +183,7 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
 
     @Override
     public void onConnectionFailed(ConnectionResult result) {
+        AccountUtil.setConnected(getApplicationContext(), false);
         if (mConnectionProgressDialog.isShowing()) {
             // The user clicked the sign-in button already. Start to resolve
             // connection errors. Wait until onConnected() to dismiss the
@@ -198,27 +210,40 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
 
     @Override
     public void onConnected(Bundle connectionHint) {
-        String accountName = mPlusClient.getAccountName();
 
-        Toast.makeText(this, accountName + " is connected.", Toast.LENGTH_LONG).show();
-
+        final String accountName = mPlusClient.getAccountName();
 
         AuthenticationModule module = ((DevnexusApplication) getApplication()).getAuth(this);
         HashMap<String, String> loginParams = new HashMap<String, String>();
         loginParams.put(GooglePlusAuthenticationModule.ACCOUNT_NAME, accountName);
         loginParams.put(GooglePlusAuthenticationModule.ACCOUNT_ID, "");
-        module.login(loginParams, new Callback<HeaderAndBody>() {
-            @Override
-            public void onSuccess(HeaderAndBody data) {
-                Toast.makeText(MainActivity.this, "Success", Toast.LENGTH_LONG).show();
-            }
+        if (!module.isLoggedIn()) {
+            module.login(loginParams, new Callback<HeaderAndBody>() {
+                @Override
+                public void onSuccess(HeaderAndBody data) {
+                    if (!AccountUtil.hasConnected(getApplicationContext())) {
+                        AccountUtil.setConnected(getApplicationContext(), true);
+                        AccountUtil.setUsername(getApplicationContext(), accountName);
 
-            @Override
-            public void onFailure(Exception e) {
-                Toast.makeText(MainActivity.this, "Failure", Toast.LENGTH_LONG).show();
-            }
-        });
+                        Intent syncConfigIntent = new Intent(getApplicationContext(), ScheduleSyncService.class);
+                        startService(syncConfigIntent);
 
+                        ((DevnexusApplication) getApplication()).registerForPush(accountName);
+
+                        Intent i = new Intent(getApplicationContext(), MainActivity.class);
+                        startActivity(i);
+
+
+                        finish();
+                    }
+                }
+
+                @Override
+                public void onFailure(Exception e) {
+                    Toast.makeText(MainActivity.this, "Failure", Toast.LENGTH_LONG).show();
+                }
+            });
+        }
 
     }
 
@@ -229,7 +254,7 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
 
     @Override
     public void onClick(View view) {
-        if (view.getId() == R.id.sign_up && !mPlusClient.isConnected()) {
+        if (view.getId() == R.id.sign_in_button && !mPlusClient.isConnected()) {
             if (mConnectionResult == null) {
                 mConnectionProgressDialog.show();
             } else {

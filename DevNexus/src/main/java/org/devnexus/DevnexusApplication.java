@@ -1,6 +1,7 @@
 package org.devnexus;
 
 import android.app.Application;
+import android.os.Handler;
 import android.util.Log;
 
 import com.google.gson.GsonBuilder;
@@ -15,10 +16,14 @@ import com.google.gson.JsonSerializer;
 import org.devnexus.adapters.ScheduleAdapter;
 import org.devnexus.auth.GooglePlusAuthenticationModule;
 import org.devnexus.fragments.ScheduleFragment;
+import org.devnexus.sync.PeriodicDataSynchronizer;
+import org.devnexus.sync.PeriodicSynchronizerConfig;
+import org.devnexus.sync.Synchronizer;
+import org.devnexus.sync.TwoWaySqlSynchronizer;
+import org.devnexus.util.CountDownCallback;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.SyncStats;
 import org.devnexus.vo.UserCalendar;
-import org.devnexus.vo.UserCalendarList;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.DataManager;
 import org.jboss.aerogear.android.Pipeline;
@@ -31,10 +36,16 @@ import org.jboss.aerogear.android.impl.datamanager.StoreTypes;
 import org.jboss.aerogear.android.impl.pipeline.GsonResponseParser;
 import org.jboss.aerogear.android.impl.pipeline.PipeConfig;
 import org.jboss.aerogear.android.pipeline.Pipe;
+import org.jboss.aerogear.android.unifiedpush.PushConfig;
+import org.jboss.aerogear.android.unifiedpush.PushRegistrar;
+import org.jboss.aerogear.android.unifiedpush.Registrations;
 
 import java.lang.reflect.Type;
 import java.net.MalformedURLException;
+import java.net.URI;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.List;
@@ -49,24 +60,31 @@ public class DevnexusApplication extends Application {
     private static final URL DEVNEXUS_URL;
 
     private static final String TAG = DevnexusApplication.class.getSimpleName();
+    public static DevnexusApplication CONTEXT = null;
     private SQLStore<Schedule> scheduleStore;
-    private SQLStore<UserCalendarList> userCalendarStore;
+    private SQLStore<UserCalendar> userCalendarStore;
     private SQLStore<SyncStats> statsStore;
-    private Authenticator authenticator = new Authenticator("http://192.168.1.194:8080");
-
+    private Authenticator authenticator = new Authenticator("http://192.168.1.194:9090");
+    private TwoWaySqlSynchronizer<UserCalendar> userCalendarSync;
 
     private GsonBuilder builder = new GsonBuilder();
 
+    private PeriodicDataSynchronizer<Schedule> scheduleSynchronizer;
 
     private Pipe<Schedule> schedulePipe;
-    private Pipe<UserCalendarList> userCalendarPipe;
+    private Pipe<UserCalendar> userCalendarPipe;
 
     private final DataManager dm = new DataManager();
     private final Pipeline pipeline;
 
+    private Handler mainLoopHandler;
+
+    private final Registrations registrations = new Registrations();
+    private PushConfig pushConfig;
+
     static {
         try {
-            DEVNEXUS_URL = new URL("http://192.168.1.194:8080/s/devnexus2013/");
+            DEVNEXUS_URL = new URL("http://192.168.1.194:9090/s/devnexus2013/");
         } catch (MalformedURLException e) {
             Log.e(TAG, e.getMessage(), e);
             throw new RuntimeException(e);
@@ -95,6 +113,9 @@ public class DevnexusApplication extends Application {
     public void onCreate() {
         super.onCreate();
 
+        CONTEXT = this;
+
+        mainLoopHandler = new Handler(getMainLooper());
 
         AuthenticationConfig config = new AuthenticationConfig();
 
@@ -102,7 +123,7 @@ public class DevnexusApplication extends Application {
 
         GooglePlusAuthenticationModule module = null;
         try {
-            module = new GooglePlusAuthenticationModule(new URL("http://192.168.1.194:8080/"), config, getApplicationContext());
+            module = new GooglePlusAuthenticationModule(new URL("http://192.168.1.194:9090/"), config, getApplicationContext());
         } catch (MalformedURLException e) {
             throw new RuntimeException(e);
         }
@@ -117,11 +138,10 @@ public class DevnexusApplication extends Application {
         schedulePipe = pipeline.pipe(Schedule.class, schedulePipeConfig);
 
         PipeConfig userCalendarPipeConfig = new PipeConfig(DEVNEXUS_URL, UserCalendar.class);
-        userCalendarPipeConfig.setEndpoint("calendar.json");
         userCalendarPipeConfig.setName("calendar");
         userCalendarPipeConfig.setAuthModule(module);
         userCalendarPipeConfig.setResponseParser(new GsonResponseParser(builder.create()));
-        userCalendarPipe = pipeline.pipe(UserCalendarList.class, userCalendarPipeConfig);
+        userCalendarPipe = pipeline.pipe(UserCalendar.class, userCalendarPipeConfig);
 
         StoreConfig scheduleItemStoreConfig = new StoreConfig();
         scheduleItemStoreConfig.setType(StoreTypes.SQL);
@@ -132,10 +152,10 @@ public class DevnexusApplication extends Application {
 
         StoreConfig userCalendarStoreConfig = new StoreConfig();
         userCalendarStoreConfig.setType(StoreTypes.SQL);
-        userCalendarStoreConfig.setKlass(UserCalendarList.class);
+        userCalendarStoreConfig.setKlass(UserCalendar.class);
         userCalendarStoreConfig.setContext(getApplicationContext());
         userCalendarStoreConfig.setBuilder(builder);
-        userCalendarStore = (SQLStore<UserCalendarList>) dm.store("userCalendar", userCalendarStoreConfig);
+        userCalendarStore = (SQLStore<UserCalendar>) dm.store("userCalendar", userCalendarStoreConfig);
 
         StoreConfig syncStatsStoreConfig = new StoreConfig();
         syncStatsStoreConfig.setKlass(SyncStats.class);
@@ -145,26 +165,57 @@ public class DevnexusApplication extends Application {
 
         statsStore = (SQLStore<SyncStats>) dm.store("stats", syncStatsStoreConfig);
 
-        final CountDownLatch latch = new CountDownLatch(3);
-        CountdownCallback callback = new CountdownCallback();
-        callback.latch = latch;
+        TwoWaySqlSynchronizer.TwoWaySqlSynchronizerConfig syncConfig = new TwoWaySqlSynchronizer.TwoWaySqlSynchronizerConfig();
+        syncConfig.setKlass(UserCalendar.class);
+        syncConfig.setPipeConfig(userCalendarPipeConfig);
+        syncConfig.setStoreConfig(userCalendarStoreConfig);
+
+        userCalendarSync = new TwoWaySqlSynchronizer<UserCalendar>(syncConfig);
+
+        PeriodicSynchronizerConfig scheduleConfig = new PeriodicSynchronizerConfig();
+        scheduleConfig.setPeriod(3600);
+
+
+        // Create a PushConfig for the UnifiedPush Server:
+        pushConfig = new PushConfig(URI.create("http://192.168.1.194:8080/ag-push"), "402595014005");
+        pushConfig.setVariantID("a26c1609-873e-427e-9106-7a6d435cbc78");
+        pushConfig.setSecret("5264fdc8-f0e6-480a-8725-f24caa9440e5");
+
+        CountDownLatch latch = new CountDownLatch(3);
+        CountDownCallback callback = new CountDownCallback(latch);
+
+        userCalendarStore.open(callback);
         statsStore.open(callback);
         scheduleStore.open(callback);
-        userCalendarStore.open(callback);
+
+
         try {
             latch.await(1000, TimeUnit.MILLISECONDS);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
 
+        latch = new CountDownLatch(1);
+        callback = new CountDownCallback(latch);
+
+
+        userCalendarSync.beginSync(this, callback);
+
+        try {
+            latch.await(1000, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+
     }
 
     public void getSchedule(final ScheduleAdapter adapter, ScheduleFragment scheduleFragment) {
         Schedule schedule;
-        UserCalendarList calendar = new UserCalendarList();
-        Collection<UserCalendarList> read = userCalendarStore.readAll();
+        List<UserCalendar> calendar = new ArrayList<UserCalendar>();
+        Collection<UserCalendar> read = userCalendarStore.readAll();
         if (read != null && read.size() > 0) {
-            calendar = read.iterator().next();
+            calendar = new ArrayList<UserCalendar>(read);
         }
 
         Collection<SyncStats> stats = statsStore.readAll();
@@ -191,18 +242,39 @@ public class DevnexusApplication extends Application {
 
     }
 
+    public Schedule getScheduleFromDataStore() {
+        return scheduleStore.readAll().iterator().next();
+    }
+
     private void loadScheudle(final ScheduleAdapter adapter, final ScheduleFragment scheduleFragment) {
 
-        schedulePipe = pipeline.get("schedule", scheduleFragment, getApplicationContext());
+        schedulePipe = pipeline.get("schedule");
         schedulePipe.read(new Callback<List<Schedule>>() {
             @Override
-            public void onSuccess(List<Schedule> schedules) {
-                Schedule schedule = schedules.get(0);
-                scheduleStore.reset();
-                scheduleStore.save(schedule);
-                statsStore.reset();
-                adapter.update(schedule, new UserCalendarList());
-                loadCalendar(adapter, scheduleFragment);
+            public void onSuccess(final List<Schedule> schedules) {
+                new Handler(getMainLooper()).post(new Runnable() {
+                    @Override
+                    public void run() {
+
+                        Schedule schedule = schedules.get(0);
+                        scheduleStore.reset();
+                        scheduleStore.save(schedule);
+                        statsStore.reset();
+                        adapter.update(schedule, new ArrayList<UserCalendar>());
+
+
+                        loadCalendar(adapter, scheduleFragment);
+
+                        SyncStats expiresTomorrow = new SyncStats();
+                        Calendar tomorrow = Calendar.getInstance();
+                        tomorrow.add(Calendar.DATE, 1);
+                        expiresTomorrow.setScheduleExpires(tomorrow.getTime());
+                        expiresTomorrow.setCalendarExpires(tomorrow.getTime());
+                        statsStore.save(expiresTomorrow);
+
+                    }
+                });
+
             }
 
             @Override
@@ -214,15 +286,16 @@ public class DevnexusApplication extends Application {
 
     private void loadCalendar(final ScheduleAdapter adapter, ScheduleFragment scheduleFragment) {
 
-        userCalendarPipe = pipeline.get("calendar", scheduleFragment, getApplicationContext());
-        userCalendarPipe.read(new Callback<List<UserCalendarList>>() {
+        userCalendarSync.resetToRemoteState(new Callback<List<UserCalendar>>() {
             @Override
-            public void onSuccess(List<UserCalendarList> schedules) {
-                UserCalendarList schedule = schedules.get(0);
-                userCalendarStore.reset();
-                userCalendarStore.save(schedule);
-                statsStore.reset();
-                adapter.update(schedule);
+            public void onSuccess(final List<UserCalendar> schedules) {
+
+                mainLoopHandler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        adapter.update(schedules);
+                    }
+                });
 
             }
 
@@ -231,6 +304,7 @@ public class DevnexusApplication extends Application {
                 Log.e("LOAD_CAL", e.getMessage(), e);
             }
         });
+
     }
 
 
@@ -238,19 +312,32 @@ public class DevnexusApplication extends Application {
         return authenticator.get("google", mainActivity);
     }
 
-    private static class CountdownCallback implements Callback {
-
-        CountDownLatch latch;
-
-        @Override
-        public void onSuccess(Object o) {
-            latch.countDown();
-        }
-
-        @Override
-        public void onFailure(Exception e) {
-            latch.countDown();
-        }
+    public TwoWaySqlSynchronizer<UserCalendar> getUserCalendarSync() {
+        return userCalendarSync;
     }
 
+
+    public SQLStore<UserCalendar> getCalendarStore() {
+        return userCalendarStore;
+    }
+
+    public void registerForPush(String accountName) {
+        pushConfig.setAlias(accountName);
+        PushRegistrar pushRegistration = registrations.push("gcm", pushConfig);
+        pushRegistration.register(this, new Callback<Void>() {
+            @Override
+            public void onSuccess(Void data) {
+                Log.d(TAG, "Push registration successful.");
+            }
+
+            @Override
+            public void onFailure(Exception e) {
+                Log.e(TAG, e.getMessage(), e);
+            }
+        });
+    }
+
+    public Synchronizer getScheduleSync() {
+        return scheduleSynchronizer;
+    }
 }

@@ -1,0 +1,14 @@
+package org.devnexus.sync;
+
+import org.devnexus.DevnexusApplication;
+import org.jboss.aerogear.android.Provider;
+
+/**
+ * Created by summers on 12/14/13.
+ */
+public class DevnexusScheduleSyncProvider implements Provider<Synchronizer> {
+    @Override
+    public Synchronizer get(Object... in) {
+        return DevnexusApplication.CONTEXT.getScheduleSync();
+    }
+}

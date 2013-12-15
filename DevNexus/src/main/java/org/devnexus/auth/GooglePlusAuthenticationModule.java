@@ -1,13 +1,14 @@
 package org.devnexus.auth;
 
 import android.content.Context;
-import android.os.Bundle;
 import android.util.Log;
 
 import com.google.android.gms.auth.GoogleAuthException;
 import com.google.android.gms.auth.GoogleAuthUtil;
 import com.google.android.gms.auth.UserRecoverableAuthException;
 
+import org.devnexus.DevnexusApplication;
+import org.devnexus.util.AccountUtil;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.Provider;
 import org.jboss.aerogear.android.authentication.AbstractAuthenticationModule;
@@ -23,6 +24,7 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -45,7 +47,8 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
     private final int timeout;
     private String cookie;
     private boolean isLoggedIn = false;
-
+    private String accountName;
+    private String accountId;
 
     public GooglePlusAuthenticationModule(URL baseURL, AuthenticationConfig config, Context appContext) {
         this.baseURL = baseURL;
@@ -91,9 +94,14 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
             @Override
             public void run() {
                 try {
-                    Bundle appActivities = new Bundle();
-                    appActivities.putString(GoogleAuthUtil.KEY_REQUEST_VISIBLE_ACTIVITIES, "");
 
+                    if (AccountUtil.hasConnected(DevnexusApplication.CONTEXT)) {
+                        cookie = AccountUtil.getCookie(DevnexusApplication.CONTEXT);
+                        isLoggedIn = true;
+                        accountName = AccountUtil.getUsername(DevnexusApplication.CONTEXT);
+                        accountId = "";
+                        headerAndBodyCallback.onSuccess(new HeaderAndBody(new byte[0], new HashMap<String, Object>()));
+                    }
 
                     final String accessToken = GoogleAuthUtil.getToken(appContext,
                             authMap.get(ACCOUNT_NAME),
@@ -106,8 +114,10 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
 
                     HeaderAndBody result = provider.post(loginRequest);
                     cookie = result.getHeader("Set-Cookie").toString();
+                    AccountUtil.setCookie(DevnexusApplication.CONTEXT, cookie);
                     isLoggedIn = true;
-
+                    accountName = authMap.get(ACCOUNT_NAME);
+                    accountId = authMap.get(ACCOUNT_ID);
                     headerAndBodyCallback.onSuccess(result);
 
                 } catch (IOException authEx) {
@@ -149,7 +159,30 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
 
     @Override
     public boolean retryLogin() throws HttpException {
-        return false;
+        try {
+
+
+            final String accessToken = GoogleAuthUtil.getToken(appContext,
+                    accountName,
+                    "audience:server:client_id:402595014005-cairesrhrd0p75jg62i8vdk4qteca2c4.apps.googleusercontent.com",
+                    null);
+
+
+            HttpProvider provider = httpProviderFactory.get(getLoginURL(), timeout);
+            String loginRequest = new JSONObject(String.format("{\"gPlusId\":\"%s\",\"accessToken\":\"%s\"}", accountId, accessToken)).toString();
+
+            HeaderAndBody result = provider.post(loginRequest);
+            cookie = result.getHeader("Set-Cookie").toString();
+            AccountUtil.setCookie(DevnexusApplication.CONTEXT, cookie);
+            isLoggedIn = true;
+
+        } catch (Exception e) {
+            AccountUtil.setCookie(DevnexusApplication.CONTEXT, "");
+            AccountUtil.setUsername(DevnexusApplication.CONTEXT, "");
+            AccountUtil.setConnected(DevnexusApplication.CONTEXT, false);
+            isLoggedIn = false;
+        }
+        return isLoggedIn;
     }
 
 

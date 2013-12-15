@@ -13,11 +13,13 @@ import org.devnexus.util.ResourceUtils;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.ScheduleItem;
 import org.devnexus.vo.UserCalendar;
-import org.devnexus.vo.UserCalendarList;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Date;
+import java.util.List;
 
 /**
  * Created by summers on 12/2/13.
@@ -35,7 +37,7 @@ public class ScheduleAdapter extends BaseAdapter {
     final DateFormat format = new SimpleDateFormat("h:mm a");
 
     private Schedule schedule;
-    private UserCalendarList calendar;
+    private List<UserCalendar> calendar;
 
     private Date dayOne;
     private Date dayTwo;
@@ -44,15 +46,17 @@ public class ScheduleAdapter extends BaseAdapter {
     private final Context appContext;
 
 
-    public ScheduleAdapter(Schedule schedule, UserCalendarList calendar, Context appContext) {
-        Log.d(TAG, "Constructor with data:" + calendar.userCalendarList.size());
+    public ScheduleAdapter(Schedule schedule, List<UserCalendar> calendar, Context appContext) {
+        Log.d(TAG, "Constructor with data:" + calendar.size());
         this.schedule = schedule;
         this.calendar = calendar;
+        this.calendar = new ArrayList<UserCalendar>(calendar);
+        Collections.sort(this.calendar);
         dayOne = schedule.scheduleItemList.days.get(0);
         dayTwo = schedule.scheduleItemList.days.get(1);
         dayOneSize = 0;
         this.appContext = appContext;
-        for (UserCalendar item : calendar.userCalendarList) {
+        for (UserCalendar item : calendar) {
             if (item.fromTime.after(dayTwo)) {
 
             } else {
@@ -64,14 +68,15 @@ public class ScheduleAdapter extends BaseAdapter {
 
     }
 
-    public void update(Schedule schedule, UserCalendarList calendar) {
-        Log.d(TAG, "Updating new data:" + calendar.userCalendarList.size());
+    public void update(Schedule schedule, List<UserCalendar> calendar) {
+        Log.d(TAG, "Updating new data:" + calendar.size());
         this.schedule = schedule;
-        this.calendar = calendar;
+        this.calendar = new ArrayList<UserCalendar>(calendar);
+        Collections.sort(this.calendar);
         dayOne = schedule.scheduleItemList.days.get(0);
         dayTwo = schedule.scheduleItemList.days.get(1);
         dayOneSize = 0;
-        for (UserCalendar item : calendar.userCalendarList) {
+        for (UserCalendar item : calendar) {
             if (item.fromTime.after(dayTwo)) {
 
             } else {
@@ -82,13 +87,16 @@ public class ScheduleAdapter extends BaseAdapter {
         super.notifyDataSetChanged();
     }
 
-    public void update(UserCalendarList calendar) {
-        Log.d(TAG, "Updating new data:" + calendar.userCalendarList.size());
-        this.calendar = calendar;
+    public void update(List<UserCalendar> calendar) {
+        Log.d(TAG, "Updating new data:" + calendar.size());
+
+
+        this.calendar = new ArrayList<UserCalendar>(calendar);
+        Collections.sort(this.calendar);
         dayOne = schedule.scheduleItemList.days.get(0);
         dayTwo = schedule.scheduleItemList.days.get(1);
         dayOneSize = 0;
-        for (UserCalendar item : calendar.userCalendarList) {
+        for (UserCalendar item : calendar) {
             if (item.fromTime.after(dayTwo)) {
 
             } else {
@@ -101,7 +109,7 @@ public class ScheduleAdapter extends BaseAdapter {
 
     @Override
     public int getCount() {
-        return calendar.userCalendarList.size() + schedule.scheduleItemList.days.size();
+        return calendar.size() + schedule.scheduleItemList.days.size();
     }
 
     @Override
@@ -111,9 +119,9 @@ public class ScheduleAdapter extends BaseAdapter {
         } else if (position == dayOneSize + 1) {
             return dayTwo;
         } else if (position > dayOneSize) {
-            return calendar.userCalendarList.get(position - 2); //Offset for two date header items
+            return calendar.get(position - 2); //Offset for two date header items
         } else {
-            return calendar.userCalendarList.get(position - 1); //Offset for one date header item
+            return calendar.get(position - 1); //Offset for one date header item
         }
     }
 
@@ -201,6 +209,10 @@ public class ScheduleAdapter extends BaseAdapter {
             convertView.setTag(holder);
         }
         return convertView;
+    }
+
+    public List<UserCalendar> getCalendar() {
+        return calendar;
     }
 
     private static class ViewHolder {
