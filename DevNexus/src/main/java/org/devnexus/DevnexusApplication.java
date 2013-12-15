@@ -16,10 +16,7 @@ import com.google.gson.JsonSerializer;
 import org.devnexus.adapters.ScheduleAdapter;
 import org.devnexus.auth.GooglePlusAuthenticationModule;
 import org.devnexus.fragments.ScheduleFragment;
-import org.devnexus.sync.PeriodicDataSynchronizer;
-import org.devnexus.sync.PeriodicSynchronizerConfig;
-import org.devnexus.sync.Synchronizer;
-import org.devnexus.sync.TwoWaySqlSynchronizer;
+import org.devnexus.util.AccountUtil;
 import org.devnexus.util.CountDownCallback;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.SyncStats;
@@ -40,6 +37,7 @@ import org.jboss.aerogear.android.unifiedpush.PushConfig;
 import org.jboss.aerogear.android.unifiedpush.PushRegistrar;
 import org.jboss.aerogear.android.unifiedpush.Registrations;
 
+import org.jboss.aerogear.android.sync.*;
 import java.lang.reflect.Type;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -207,6 +205,11 @@ public class DevnexusApplication extends Application {
             e.printStackTrace();
         }
 
+        if (AccountUtil.hasConnected(this)) {
+            registerForPush(AccountUtil.getUsername(this));
+        }
+
+
 
     }
 
@@ -261,7 +264,6 @@ public class DevnexusApplication extends Application {
                         scheduleStore.save(schedule);
                         statsStore.reset();
                         adapter.update(schedule, new ArrayList<UserCalendar>());
-
 
                         loadCalendar(adapter, scheduleFragment);
 

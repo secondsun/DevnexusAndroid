@@ -2,7 +2,7 @@ package org.devnexus.sync;
 
 import org.devnexus.DevnexusApplication;
 import org.jboss.aerogear.android.Provider;
-
+import org.jboss.aerogear.android.sync.*;
 /**
  * Created by summers on 12/14/13.
  */

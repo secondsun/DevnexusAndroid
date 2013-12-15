@@ -60,8 +60,9 @@
             android:name="org.devnexus.GalleriaMapActivity"
             android:label="@string/app_name"></activity>
 
+
         <receiver
-            android:name="org.devnexus.sync.AeroGearGCMSyncMessageReceiver"
+            android:name="org.jboss.aerogear.android.sync.AeroGearGCMSyncMessageReceiver"
             android:permission="com.google.android.c2dm.permission.SEND">
             <intent-filter>
                 <action android:name="com.google.android.c2dm.intent.RECEIVE" />
@@ -77,7 +78,7 @@
         </receiver>
 
 
-        <receiver android:name="org.devnexus.sync.SyncTimerReceiver">
+        <receiver android:name="org.jboss.aerogear.android.sync.SyncTimerReceiver">
             <meta-data
                 android:name="SYNC_PROVIDER_KEY"
                 android:value="org.devnexus.sync.DevnexusScheduleSyncProvider" />

@@ -10,10 +10,9 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
+import org.jboss.aerogear.android.sync.*;
 import org.devnexus.DevnexusApplication;
 import org.devnexus.adapters.ScheduleAdapter;
-import org.devnexus.sync.SynchronizeEventListener;
-import org.devnexus.sync.TwoWaySqlSynchronizer;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.ScheduleItem;
 import org.devnexus.vo.UserCalendar;
