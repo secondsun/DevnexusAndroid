@@ -16,8 +16,10 @@ import android.widget.TextView;
 import org.devnexus.DevnexusApplication;
 import org.devnexus.R;
 import org.devnexus.util.ResourceUtils;
+import org.devnexus.util.SessionPickerReceiver;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.ScheduleItem;
+import org.devnexus.vo.UserCalendar;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -35,18 +37,21 @@ public class SessionPickerFragment extends DialogFragment {
 
 
     private static final String SCHEDULE = "SessionPickerFragment.SCHEDULE";
+    private static final String CALENDAR = "SessionPickerFragment.CALENDAR";
     private static final String DATE = "SessionPickerFragment.DATE";
     private static final String TAG = SessionPickerFragment.class.getSimpleName();
     private SessionAdapter adapter;
+    private UserCalendar calendarItem;
     private List<ScheduleItem> schedule;
     private SessionPickerReceiver receiver;
     private Date time;
     private ListView view;
 
-    public static SessionPickerFragment newInstance(Date time) {
+    public static SessionPickerFragment newInstance(UserCalendar calendarItem) {
         SessionPickerFragment fragment = new SessionPickerFragment();
         Bundle args = new Bundle();
-        args.putSerializable(DATE, time);
+        args.putSerializable(DATE, calendarItem.fromTime);
+        args.putSerializable(CALENDAR, calendarItem);
         fragment.setArguments(args);
         return fragment;
     }
@@ -71,7 +76,7 @@ public class SessionPickerFragment extends DialogFragment {
 
         Bundle args = getArguments();
         time = (Date) args.getSerializable(DATE);
-
+        calendarItem = (UserCalendar) args.getSerializable(CALENDAR);
 
         if (adapter == null) {
             adapter = new SessionAdapter(activity.getApplicationContext(), R.layout.schedule_list_item);
@@ -114,7 +119,7 @@ public class SessionPickerFragment extends DialogFragment {
         view.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                receiver.receiveSessionItem(adapter.getItem(position));
+                receiver.receiveSessionItem(calendarItem, adapter.getItem(position));
                 dismiss();
             }
         });
@@ -176,10 +181,6 @@ public class SessionPickerFragment extends DialogFragment {
         private TextView title;
         private TextView roomName;
         private Integer sessionId;
-    }
-
-    public interface SessionPickerReceiver {
-        void receiveSessionItem(ScheduleItem session);
     }
 
 }

@@ -51,6 +51,7 @@ Combating this contagion requires an approach that provides a type of insurance 
         <Button
             android:id="@+id/add_to_schedule_button"
             android:layout_width="match_parent"
+            android:background="@color/dn_white"
             android:text="Add to Schedule"
             android:layout_height="wrap_content" />
 
@@ -63,8 +64,8 @@ Combating this contagion requires an approach that provides a type of insurance 
                 android:layout_marginRight="15dp"
                 android:layout_alignParentTop="true"
                 android:layout_alignParentLeft="true"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
+                android:layout_width="100dp"
+                android:layout_height="133dp"
                 android:layout_gravity="center"
                 android:src="@drawable/speaker" />
 

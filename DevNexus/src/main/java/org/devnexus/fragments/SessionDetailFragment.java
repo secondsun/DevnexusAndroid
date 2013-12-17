@@ -17,6 +17,7 @@ import android.widget.TextView;
 import org.devnexus.R;
 import org.devnexus.util.CachingImageProvider;
 import org.devnexus.util.ResourceUtils;
+import org.devnexus.util.SessionPickerReceiver;
 import org.devnexus.vo.ScheduleItem;
 import org.devnexus.vo.UserCalendar;
 
@@ -27,15 +28,36 @@ public class SessionDetailFragment extends DialogFragment implements CachingImag
 
     private static final String USER_CALENDAR = "SessionDetailFragment.UserCalendar";
     private static final String SCHEDULE_ITEM = "SessionDetailFragment.ScheduleItem";
-    ;
-
     private static final DateFormat FORMAT = new SimpleDateFormat("EEE MM dd hh:mm a");
+
+    private View.OnClickListener addSession = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            receiver.receiveSessionItem(calendarSlot, scheduleItem);
+
+            setText(R.id.add_to_schedule_button, "This session is on your calendar.");
+            view.findViewById(R.id.add_to_schedule_button).setBackgroundResource(R.color.dn_blue);
+            v.setOnClickListener(removeSession);
+        }
+    };
+
+
+    private View.OnClickListener removeSession = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            receiver.receiveSessionItem(calendarSlot, null);
+            setText(R.id.add_to_schedule_button, "Add to Schedule");
+            view.findViewById(R.id.add_to_schedule_button).setBackgroundResource(R.color.dn_white);
+            v.setOnClickListener(addSession);
+        }
+    };
 
     private View view;
     private UserCalendar calendarSlot;
     private ScheduleItem scheduleItem;
-    private SessionPickerFragment.SessionPickerReceiver receiver;
+    private SessionPickerReceiver receiver;
     private AsyncTask<Void, Void, Bitmap> imageLoader;
+
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -45,6 +67,15 @@ public class SessionDetailFragment extends DialogFragment implements CachingImag
 
         if (calendarSlot == null || calendarSlot.fixed) {
             hide(R.id.add_to_schedule_button);
+        } else {
+
+            if (calendarSlot.item != null && scheduleItem.id == calendarSlot.item.id) {
+                setText(R.id.add_to_schedule_button, "This session is on your calendar.");
+                view.findViewById(R.id.add_to_schedule_button).setBackgroundResource(R.color.dn_blue);
+                addListener(R.id.add_to_schedule_button, removeSession);
+            } else {
+                addListener(R.id.add_to_schedule_button, addSession);
+            }
         }
 
         if (scheduleItem.presentation != null) {
@@ -54,11 +85,8 @@ public class SessionDetailFragment extends DialogFragment implements CachingImag
             setText(R.id.session_description, scheduleItem.presentation.description);
             setText(R.id.speaker_name, scheduleItem.presentation.speaker.firstName + " " + scheduleItem.presentation.speaker.lastName);
             setText(R.id.speaker_bio, scheduleItem.presentation.speaker.bio);
-
         } else {
             view.findViewById(R.id.schedule_detail_header).setBackgroundResource(ResourceUtils.trackCSSToColor(scheduleItem.room.cssStyleName));
-
-
             setText(R.id.session_title, scheduleItem.title);
             setText(R.id.session_subtitle, String.format("%s in %s", FORMAT.format(scheduleItem.fromTime), scheduleItem.room.name));
             hide(R.id.session_description);
@@ -67,6 +95,10 @@ public class SessionDetailFragment extends DialogFragment implements CachingImag
             hide(R.id.speaker_bio);
         }
         return view;
+    }
+
+    private void addListener(int viewId, View.OnClickListener onClickListener) {
+        view.findViewById(viewId).setOnClickListener(onClickListener);
     }
 
     @Override
@@ -109,7 +141,7 @@ public class SessionDetailFragment extends DialogFragment implements CachingImag
         return fragment;
     }
 
-    public void setReceiver(SessionPickerFragment.SessionPickerReceiver receiver) {
+    public void setReceiver(SessionPickerReceiver receiver) {
         this.receiver = receiver;
     }
 

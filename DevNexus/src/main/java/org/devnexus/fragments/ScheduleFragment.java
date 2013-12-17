@@ -11,6 +11,7 @@ import android.widget.ListView;
 
 import org.devnexus.DevnexusApplication;
 import org.devnexus.adapters.ScheduleAdapter;
+import org.devnexus.util.SessionPickerReceiver;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.ScheduleItem;
 import org.devnexus.vo.UserCalendar;
@@ -24,7 +25,7 @@ import java.util.Collection;
 /**
  * Created by summers on 11/13/13.
  */
-public class ScheduleFragment extends Fragment implements SessionPickerFragment.SessionPickerReceiver, SynchronizeEventListener<UserCalendar> {
+public class ScheduleFragment extends Fragment implements SessionPickerReceiver, SynchronizeEventListener<UserCalendar> {
 
     private static final String CONTEXT = "org.devnexus.fragments.ScheduleFragment.CONTEXT";
     private static final String TAG = ScheduleFragment.class.getSimpleName();
@@ -81,11 +82,11 @@ public class ScheduleFragment extends Fragment implements SessionPickerFragment.
                     UserCalendar item = (UserCalendar) adapter.getItem(position);
 
                     if (item.item != null) {
-                        SessionDetailFragment sessionPicker = SessionDetailFragment.newInstance(item, item.item);
-                        sessionPicker.setReceiver(ScheduleFragment.this);
-                        sessionPicker.show(getActivity().getSupportFragmentManager(), TAG);
+                        SessionDetailFragment sessionDetailFragment = SessionDetailFragment.newInstance(item, item.item);
+                        sessionDetailFragment.setReceiver(ScheduleFragment.this);
+                        sessionDetailFragment.show(getActivity().getSupportFragmentManager(), TAG);
                     } else {
-                        SessionPickerFragment sessionPicker = SessionPickerFragment.newInstance(item.fromTime);
+                        SessionPickerFragment sessionPicker = SessionPickerFragment.newInstance(item);
                         sessionPicker.setReceiver(ScheduleFragment.this);
                         sessionPicker.show(getActivity().getSupportFragmentManager(), TAG);
                     }
@@ -97,15 +98,11 @@ public class ScheduleFragment extends Fragment implements SessionPickerFragment.
     }
 
     @Override
-    public void receiveSessionItem(ScheduleItem session) {
+    public void receiveSessionItem(UserCalendar calendarItem, ScheduleItem session) {
 
-        for (UserCalendar item : adapter.getCalendar()) {
-            if (item.fromTime.equals(session.fromTime)) {
-                item.item = session;
-                calendarStore.remove(item.getId());
-                calendarStore.save(item);
-            }
-        }
+        calendarItem.item = session;
+        calendarStore.remove(calendarItem.getId());
+        calendarStore.save(calendarItem);
 
         adapter.update(new ArrayList<UserCalendar>(calendarStore.readAll()));
         adapter.notifyDataSetChanged();
