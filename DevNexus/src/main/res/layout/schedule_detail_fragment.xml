@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView
+    android:layout_height="wrap_content"
+    android:layout_width="match_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="vertical"
+        android:layout_margin="15dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <RelativeLayout
+            android:id="@+id/schedule_detail_header"
+            android:background="@color/dn_green"
+            android:padding="15dp"
+            android:layout_marginBottom="10dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/session_title"
+                android:layout_width="wrap_content"
+                android:background="@android:color/transparent"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                android:textSize="16dp"
+                android:text="Enterprise Integration Agility" />
+
+
+            <TextView
+                android:id="@+id/session_subtitle"
+                android:background="@android:color/transparent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/session_title"
+                android:textSize="8dp"
+                android:text="Tue Feb 19 10:30-11:45 AM in Room 102" />
+
+        </RelativeLayout>
+
+        <TextView
+            android:id="@+id/session_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Public Web APIs are increasing at an exponential rate resulting in an ever more connected web. This connected contagion is not just relegated to the domain of Web 2.0 but has infected the corporate world. In fact, companies are becoming more reliant on Software as a Service (SAAS) to provide key business functions.
+
+Combating this contagion requires an approach that provides a type of insurance against constant change and lays the foundation for evergreen enterprise solutions. In this session we will explore three popular architectural styles including Message Oriented, Service Oriented, and Resource Oriented Architecture that are used to achieve Enterprise Integration Agility. In addition, I will provide examples of each architectural style using ActiveMQ/Camel, Mule ESB, and NetKernel." />
+
+        <Button
+            android:id="@+id/add_to_schedule_button"
+            android:layout_width="match_parent"
+            android:text="Add to Schedule"
+            android:layout_height="wrap_content" />
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <ImageView
+                android:id="@+id/speaker_img"
+                android:layout_marginRight="15dp"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentLeft="true"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:src="@drawable/speaker" />
+
+            <TextView
+                android:id="@+id/speaker_name"
+                android:layout_alignParentTop="true"
+                android:layout_toRightOf="@+id/speaker_img"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Jeremy Deane " />
+
+            <TextView
+                android:id="@+id/speaker_bio"
+                android:padding="15dp"
+                android:layout_below="@+id/speaker_name"
+                android:layout_toRightOf="@+id/speaker_img"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Jeremy Deane has over 17 years of software engineering experience in leadership positions. His expertise includes Enterprise Integration Architecture, Web Application Architecture, and Software Process Improvement. In addition, he is an accomplished speaker and technical author." />
+
+        </RelativeLayout>
+
+
+    </LinearLayout>
+
+</ScrollView>

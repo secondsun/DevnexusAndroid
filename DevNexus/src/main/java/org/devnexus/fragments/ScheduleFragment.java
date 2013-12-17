@@ -3,20 +3,20 @@ package org.devnexus.fragments;
 import android.app.Activity;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
-import org.jboss.aerogear.android.sync.*;
 import org.devnexus.DevnexusApplication;
 import org.devnexus.adapters.ScheduleAdapter;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.ScheduleItem;
 import org.devnexus.vo.UserCalendar;
 import org.jboss.aerogear.android.impl.datamanager.SQLStore;
+import org.jboss.aerogear.android.sync.SynchronizeEventListener;
+import org.jboss.aerogear.android.sync.TwoWaySqlSynchronizer;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -79,10 +79,12 @@ public class ScheduleFragment extends Fragment implements SessionPickerFragment.
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if (adapter.getItem(position) instanceof UserCalendar) {
                     UserCalendar item = (UserCalendar) adapter.getItem(position);
-                    if (!item.fixed) {
-                        if (item.fromTime == null) {
-                            Log.e(TAG, "fromTime is null!");
-                        }
+
+                    if (item.item != null) {
+                        SessionDetailFragment sessionPicker = SessionDetailFragment.newInstance(item, item.item);
+                        sessionPicker.setReceiver(ScheduleFragment.this);
+                        sessionPicker.show(getActivity().getSupportFragmentManager(), TAG);
+                    } else {
                         SessionPickerFragment sessionPicker = SessionPickerFragment.newInstance(item.fromTime);
                         sessionPicker.setReceiver(ScheduleFragment.this);
                         sessionPicker.show(getActivity().getSupportFragmentManager(), TAG);

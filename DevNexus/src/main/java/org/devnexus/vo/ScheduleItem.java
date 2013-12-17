@@ -1,11 +1,12 @@
 package org.devnexus.vo;
 
+import java.io.Serializable;
 import java.util.Date;
 
 /**
  * Created by summers on 11/13/13.
  */
-public class ScheduleItem {
+public class ScheduleItem implements Serializable {
     public int id;
     public Date createdDate;
     public Date updatedDate;

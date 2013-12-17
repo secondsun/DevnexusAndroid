@@ -163,6 +163,7 @@ public class ScheduleAdapter extends BaseAdapter {
                 UserCalendar calendarEntry = ((UserCalendar) getItem(position));
                 ScheduleItem item = calendarEntry.item;
                 holder.date.setText(format.format(calendarEntry.fromTime));
+
                 if (item  != null) {
                     holder.date.setBackgroundResource(ResourceUtils.trackCSSToColor(item.room.cssStyleName));
                     if (item.room != null && item.room.name != null)

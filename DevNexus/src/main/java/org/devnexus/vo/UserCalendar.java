@@ -2,12 +2,13 @@ package org.devnexus.vo;
 
 import org.jboss.aerogear.android.RecordId;
 
+import java.io.Serializable;
 import java.util.Date;
 
 /**
  * Created by summers on 12/1/13.
  */
-public class UserCalendar implements Comparable<UserCalendar> {
+public class UserCalendar implements Comparable<UserCalendar>, Serializable {
 
     @RecordId
     private Long id;
