@@ -17,6 +17,7 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GooglePlayServicesClient;
+import com.google.android.gms.common.GooglePlayServicesUtil;
 import com.google.android.gms.plus.PlusClient;
 
 import org.devnexus.auth.GooglePlusAuthenticationModule;
@@ -39,6 +40,7 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
 
     private static final String TAG = "MainActivity";
     private static final int REQUEST_CODE_RESOLVE_ERR = 9000;
+    private static final int REQUEST_CODE_RESOLVE_GPS = 10000;
 
     private static final String SCOPES = "https://www.googleapis.com/auth/plus.login "
             + "https://www.googleapis.com/auth/userinfo.email "
@@ -73,6 +75,14 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
     private void showSignIn() {
         setContentView(R.layout.sign_in_layout);
         findViewById(R.id.sign_in_button).setOnClickListener(this);
+
+        int status = GooglePlayServicesUtil.isGooglePlayServicesAvailable(this);
+        if (status != ConnectionResult.SUCCESS) {
+            if (GooglePlayServicesUtil.isUserRecoverableError(status)) {
+                GooglePlayServicesUtil.getErrorDialog(status, this, REQUEST_CODE_RESOLVE_ERR).show();
+            }
+        }
+
     }
 
     private void showPager() {
@@ -181,6 +191,8 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
     }
 
 
+
+
     @Override
     public void onConnectionFailed(ConnectionResult result) {
         AccountUtil.setConnected(getApplicationContext(), false);
@@ -205,6 +217,8 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
         if (requestCode == REQUEST_CODE_RESOLVE_ERR && responseCode == RESULT_OK) {
             mConnectionResult = null;
             mPlusClient.connect();
+        } else if (requestCode == REQUEST_CODE_RESOLVE_GPS && responseCode == RESULT_OK) {
+
         }
     }
 
