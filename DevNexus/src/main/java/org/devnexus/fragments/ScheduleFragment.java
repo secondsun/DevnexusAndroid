@@ -120,4 +120,8 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
     public UserCalendar resolveConflicts(UserCalendar clientData, UserCalendar serverData) {
         return null;
     }
+
+    public static Fragment newInstance() {
+        return new ScheduleFragment();
+    }
 }

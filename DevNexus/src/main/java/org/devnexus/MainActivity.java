@@ -3,16 +3,21 @@ package org.devnexus;
 import android.app.ProgressDialog;
 import android.content.Intent;
 import android.content.IntentSender;
+import android.content.res.Configuration;
 import android.os.Bundle;
+import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
-import android.support.v4.app.FragmentPagerAdapter;
-import android.support.v4.app.FragmentTransaction;
-import android.support.v4.view.ViewPager;
-import android.support.v7.app.ActionBar;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
 import android.util.Log;
+import android.view.MenuItem;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.AdapterView;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -32,11 +37,11 @@ import org.jboss.aerogear.android.http.HeaderAndBody;
 
 import java.util.HashMap;
 
-public class MainActivity extends ActionBarActivity implements ActionBar.TabListener,
-        ViewPager.OnPageChangeListener,
+public class MainActivity extends ActionBarActivity implements
         View.OnClickListener,
         GooglePlayServicesClient.ConnectionCallbacks,
-        GooglePlayServicesClient.OnConnectionFailedListener {
+        GooglePlayServicesClient.OnConnectionFailedListener,
+        AdapterView.OnItemClickListener {
 
     private static final String TAG = "MainActivity";
     private static final int REQUEST_CODE_RESOLVE_ERR = 9000;
@@ -46,11 +51,16 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
             + "https://www.googleapis.com/auth/userinfo.email "
             + "https://www.googleapis.com/auth/userinfo.profile";
     private static final Integer REQUEST_AUTHORIZATION = 8000;
+    private static final String[] NAVIGATION = new String[]{"Schedule", "Map", "Social"};
 
     private ProgressDialog mConnectionProgressDialog;
     private PlusClient mPlusClient;
     private ConnectionResult mConnectionResult;
-    private ViewPager mViewPager;
+    private ListView drawerList;
+    private DrawerLayout drawerLayout;
+    private ActionBarDrawerToggle drawerToggle;
+    private String drawerTitle = "Schedule";
+    private String title;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -89,25 +99,75 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
 
         setContentView(R.layout.activity_main);
 
-        mViewPager = (ViewPager) findViewById(R.id.pager);
+        showDrawer();
 
-        // Phone setup
-        mViewPager.setAdapter(new HomePagerAdapter(getSupportFragmentManager()));
-        mViewPager.setOnPageChangeListener(this);
-
-        final ActionBar actionBar = getSupportActionBar();
-        actionBar.setNavigationMode(ActionBar.NAVIGATION_MODE_TABS);
-        actionBar.addTab(actionBar.newTab()
-                .setText(R.string.title_schedule)
-                .setTabListener(this));
-        actionBar.addTab(actionBar.newTab()
-                .setText(R.string.title_tracks)
-                .setTabListener(this));
-        actionBar.addTab(actionBar.newTab()
-                .setText(R.string.title_social)
-                .setTabListener(this));
+        // Insert the fragment by replacing any existing fragment
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        fragmentManager.beginTransaction()
+                .replace(R.id.root_fragment, ScheduleFragment.newInstance())
+                .commit();
 
     }
+
+    private void showDrawer() {
+        setContentView(R.layout.activity_main);
+
+
+        title = drawerTitle = getTitle().toString();
+        drawerLayout = (DrawerLayout) findViewById(R.id.drawer_layout);
+        drawerList = (ListView) findViewById(R.id.left_drawer);
+
+        // Set the adapter for the list view
+        drawerList.setAdapter(new ArrayAdapter<String>(this,
+                R.layout.navigation_drawer_item, NAVIGATION) {
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                if (convertView == null) {
+                    convertView = getLayoutInflater().inflate(R.layout.navigation_drawer_item, null);
+                }
+
+                ((TextView) convertView.findViewById(R.id.name)).setText(getItem(position));
+
+                return convertView;
+            }
+        });
+        // Set the list's click listener
+        drawerList.setOnItemClickListener(this);
+
+        drawerToggle = new ActionBarDrawerToggle(this, drawerLayout,
+                R.drawable.ic_drawer, R.string.open_drawer, R.string.close_drawer) {
+
+
+            /**
+             * Called when a drawer has settled in a completely closed state.
+             */
+            public void onDrawerClosed(View view) {
+                getActionBar().setTitle(getTitle());
+                invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
+            }
+
+            /**
+             * Called when a drawer has settled in a completely open state.
+             */
+            public void onDrawerOpened(View drawerView) {
+                getActionBar().setTitle(drawerTitle);
+                invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
+            }
+        };
+
+        drawerList.setItemChecked(0, true);
+
+
+        // Set the drawer toggle as the DrawerListener
+        drawerLayout.setDrawerListener(drawerToggle);
+
+        getActionBar().setDisplayHomeAsUpEnabled(true);
+        getActionBar().setHomeButtonEnabled(true);
+
+
+    }
+
+
 
     @Override
     protected void onStart() {
@@ -122,76 +182,64 @@ public class MainActivity extends ActionBarActivity implements ActionBar.TabList
         mPlusClient.disconnect();
     }
 
-
     @Override
-    public void onTabSelected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
-        mViewPager.setCurrentItem(tab.getPosition());
+    protected void onPostCreate(Bundle savedInstanceState) {
+        super.onPostCreate(savedInstanceState);
+        // Sync the toggle state after onRestoreInstanceState has occurred.
+        drawerToggle.syncState();
     }
 
     @Override
-    public void onTabUnselected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
-
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        drawerToggle.onConfigurationChanged(newConfig);
     }
 
     @Override
-    public void onTabReselected(ActionBar.Tab tab, FragmentTransaction fragmentTransaction) {
+    public boolean onOptionsItemSelected(MenuItem item) {
+        // Pass the event to ActionBarDrawerToggle, if it returns
+        // true, then it has handled the app icon touch event
+        if (drawerToggle.onOptionsItemSelected(item)) {
+            return true;
+        }
+        // Handle your other action bar items...
+
+        return super.onOptionsItemSelected(item);
+    }
+
+
+    @Override
+    public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+        // Create a new fragment and specify the planet to show based on position
+        Fragment fragment = getItem(position);
+        Bundle args = new Bundle();
+        fragment.setArguments(args);
+
+        // Insert the fragment by replacing any existing fragment
+        FragmentManager fragmentManager = getSupportFragmentManager();
+        fragmentManager.beginTransaction()
+                .replace(R.id.root_fragment, fragment)
+                .commit();
+
+        // Highlight the selected item, update the title, and close the drawer
+        drawerList.setItemChecked(position, true);
+        setTitle(NAVIGATION[position]);
+
+        drawerLayout.closeDrawer(drawerList);
 
     }
 
-    @Override
-    public void onPageScrolled(int i, float v, int i2) {
-
-    }
-
-    @Override
-    public void onPageSelected(int position) {
-        getSupportActionBar().setSelectedNavigationItem(position);
-
-        int titleId = -1;
+    private Fragment getItem(int position) {
         switch (position) {
             case 0:
-                titleId = R.string.title_schedule;
-                break;
+                return new ScheduleFragment();
             case 1:
-                titleId = R.string.title_tracks;
-                break;
+                return new TracksFragment();
             case 2:
-                titleId = R.string.title_social;
-                break;
+                return new CountDownFragment();
         }
+        return null;
     }
-
-    @Override
-    public void onPageScrollStateChanged(int i) {
-
-    }
-
-    private class HomePagerAdapter extends FragmentPagerAdapter {
-        public HomePagerAdapter(FragmentManager fm) {
-            super(fm);
-        }
-
-        @Override
-        public Fragment getItem(int position) {
-            switch (position) {
-                case 0:
-                    return new ScheduleFragment();
-                case 1:
-                    return new TracksFragment();
-                case 2:
-                    return new CountDownFragment();
-            }
-            return null;
-        }
-
-        @Override
-        public int getCount() {
-            return 3;
-        }
-    }
-
-
-
 
     @Override
     public void onConnectionFailed(ConnectionResult result) {

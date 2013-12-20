@@ -34,11 +34,14 @@ import org.jboss.aerogear.android.impl.datamanager.StoreTypes;
 import org.jboss.aerogear.android.impl.pipeline.GsonResponseParser;
 import org.jboss.aerogear.android.impl.pipeline.PipeConfig;
 import org.jboss.aerogear.android.pipeline.Pipe;
+import org.jboss.aerogear.android.sync.PeriodicDataSynchronizer;
+import org.jboss.aerogear.android.sync.PeriodicSynchronizerConfig;
+import org.jboss.aerogear.android.sync.Synchronizer;
+import org.jboss.aerogear.android.sync.TwoWaySqlSynchronizer;
 import org.jboss.aerogear.android.unifiedpush.PushConfig;
 import org.jboss.aerogear.android.unifiedpush.PushRegistrar;
 import org.jboss.aerogear.android.unifiedpush.Registrations;
 
-import org.jboss.aerogear.android.sync.*;
 import java.lang.reflect.Type;
 import java.net.MalformedURLException;
 import java.net.URI;
@@ -85,7 +88,7 @@ public class DevnexusApplication extends Application {
 
     static {
         try {
-            DEVNEXUS_URL = new URL("http://10.0.2.2:8080/s/");
+            DEVNEXUS_URL = new URL("http://192.168.1.194:9090/s/");
             PUSH_URL = new URI("http://192.168.1.194:8080/ag-push");
         } catch (MalformedURLException e) {
             Log.e(TAG, e.getMessage(), e);
@@ -212,7 +215,6 @@ public class DevnexusApplication extends Application {
         if (AccountUtil.hasConnected(this)) {
             registerForPush(AccountUtil.getUsername(this));
         }
-
 
 
     }

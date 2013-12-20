@@ -7,5 +7,7 @@
     <string name="title_schedule">Schedule</string>
     <string name="title_tracks">Tracks</string>
     <string name="title_social">Social</string>
+    <string name="open_drawer">Open Drawer</string>
+    <string name="close_drawer">Close Navigation</string>
 
 </resources>
