@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
@@ -27,8 +28,8 @@ import com.google.android.gms.plus.PlusClient;
 
 import org.devnexus.auth.GooglePlusAuthenticationModule;
 import org.devnexus.fragments.CountDownFragment;
+import org.devnexus.fragments.GalleriaMapFragment;
 import org.devnexus.fragments.ScheduleFragment;
-import org.devnexus.fragments.TracksFragment;
 import org.devnexus.service.ScheduleSyncService;
 import org.devnexus.util.AccountUtil;
 import org.jboss.aerogear.android.Callback;
@@ -133,7 +134,7 @@ public class MainActivity extends ActionBarActivity implements
         });
         // Set the list's click listener
         drawerList.setOnItemClickListener(this);
-
+        drawerList.setChoiceMode(AbsListView.CHOICE_MODE_SINGLE);
         drawerToggle = new ActionBarDrawerToggle(this, drawerLayout,
                 R.drawable.ic_drawer, R.string.open_drawer, R.string.close_drawer) {
 
@@ -142,7 +143,7 @@ public class MainActivity extends ActionBarActivity implements
              * Called when a drawer has settled in a completely closed state.
              */
             public void onDrawerClosed(View view) {
-                getActionBar().setTitle(getTitle());
+                getSupportActionBar().setTitle(getTitle());
                 invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
             }
 
@@ -150,7 +151,7 @@ public class MainActivity extends ActionBarActivity implements
              * Called when a drawer has settled in a completely open state.
              */
             public void onDrawerOpened(View drawerView) {
-                getActionBar().setTitle(drawerTitle);
+                getSupportActionBar().setTitle(drawerTitle);
                 invalidateOptionsMenu(); // creates call to onPrepareOptionsMenu()
             }
         };
@@ -161,8 +162,8 @@ public class MainActivity extends ActionBarActivity implements
         // Set the drawer toggle as the DrawerListener
         drawerLayout.setDrawerListener(drawerToggle);
 
-        getActionBar().setDisplayHomeAsUpEnabled(true);
-        getActionBar().setHomeButtonEnabled(true);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setHomeButtonEnabled(true);
 
 
     }
@@ -185,22 +186,28 @@ public class MainActivity extends ActionBarActivity implements
     @Override
     protected void onPostCreate(Bundle savedInstanceState) {
         super.onPostCreate(savedInstanceState);
-        // Sync the toggle state after onRestoreInstanceState has occurred.
-        drawerToggle.syncState();
+        if (drawerToggle != null) {
+            // Sync the toggle state after onRestoreInstanceState has occurred.
+            drawerToggle.syncState();
+        }
     }
 
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
-        drawerToggle.onConfigurationChanged(newConfig);
+        if (drawerToggle != null) {
+            drawerToggle.onConfigurationChanged(newConfig);
+        }
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         // Pass the event to ActionBarDrawerToggle, if it returns
         // true, then it has handled the app icon touch event
-        if (drawerToggle.onOptionsItemSelected(item)) {
-            return true;
+        if (drawerToggle != null) {
+            if (drawerToggle.onOptionsItemSelected(item)) {
+                return true;
+            }
         }
         // Handle your other action bar items...
 
@@ -211,18 +218,26 @@ public class MainActivity extends ActionBarActivity implements
     @Override
     public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
         // Create a new fragment and specify the planet to show based on position
+        FragmentManager fragmentManager = getSupportFragmentManager();
+
+        if (fragmentManager.getFragments().get(0) instanceof GalleriaMapFragment && position == 1) {
+            drawerLayout.closeDrawer(drawerList);
+            return;
+        }
+
         Fragment fragment = getItem(position);
         Bundle args = new Bundle();
         fragment.setArguments(args);
 
         // Insert the fragment by replacing any existing fragment
-        FragmentManager fragmentManager = getSupportFragmentManager();
+
         fragmentManager.beginTransaction()
                 .replace(R.id.root_fragment, fragment)
                 .commit();
 
         // Highlight the selected item, update the title, and close the drawer
         drawerList.setItemChecked(position, true);
+
         setTitle(NAVIGATION[position]);
 
         drawerLayout.closeDrawer(drawerList);
@@ -234,7 +249,7 @@ public class MainActivity extends ActionBarActivity implements
             case 0:
                 return new ScheduleFragment();
             case 1:
-                return new TracksFragment();
+                return new GalleriaMapFragment();
             case 2:
                 return new CountDownFragment();
         }

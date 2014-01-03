@@ -8,8 +8,6 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 
-import org.devnexus.GalleriaMapActivity;
-
 /**
  * Created by summers on 11/13/13.
  */
@@ -22,7 +20,7 @@ public class TracksFragment extends Fragment {
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Intent i = new Intent(inflater.getContext(), GalleriaMapActivity.class);
+                Intent i = new Intent(inflater.getContext(), GalleriaMapFragment.class);
                 startActivity(i);
             }
         });

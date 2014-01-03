@@ -56,11 +56,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity
-            android:name="org.devnexus.GalleriaMapActivity"
-            android:label="@string/app_name"></activity>
-
-
         <receiver
             android:name="org.jboss.aerogear.android.sync.AeroGearGCMSyncMessageReceiver"
             android:permission="com.google.android.c2dm.permission.SEND">
@@ -87,7 +82,7 @@
 
         <meta-data
             android:name="com.google.android.maps.v2.API_KEY"
-            android:value="AIzaSyBBczUsLLdAl7sIlQIOggGlfqH2WIjdJ7M" />
+            android:value="AIzaSyD2Mz1whBTDHRiSc71neokZyEJF9A6mK24" />
 
     </application>
 
