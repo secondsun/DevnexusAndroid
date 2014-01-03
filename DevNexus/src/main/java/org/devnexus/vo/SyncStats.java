@@ -2,12 +2,13 @@ package org.devnexus.vo;
 
 import org.jboss.aerogear.android.RecordId;
 
+import java.io.Serializable;
 import java.util.Date;
 
 /**
  * Created by summers on 12/2/13.
  */
-public class SyncStats {
+public class SyncStats implements Serializable {
 
 
     @RecordId

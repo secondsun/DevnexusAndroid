@@ -2,6 +2,7 @@ package org.devnexus;
 
 import android.app.Activity;
 import android.app.Application;
+import android.os.AsyncTask;
 import android.os.Handler;
 import android.util.Log;
 
@@ -219,35 +220,51 @@ public class DevnexusApplication extends Application {
 
     }
 
-    public void getSchedule(final ScheduleAdapter adapter, ScheduleFragment scheduleFragment) {
-        Schedule schedule;
-        List<UserCalendar> calendar = new ArrayList<UserCalendar>();
-        Collection<UserCalendar> read = userCalendarStore.readAll();
-        if (read != null && read.size() > 0) {
-            calendar = new ArrayList<UserCalendar>(read);
-        }
+    public void getSchedule(final ScheduleAdapter adapter, final ScheduleFragment scheduleFragment) {
 
-        Collection<SyncStats> stats = statsStore.readAll();
-        if (stats.isEmpty()) {
-            loadScheudle(adapter, scheduleFragment);
-            return;
-        } else {
-            SyncStats stat = stats.iterator().next();
-            if (stat.getScheduleExpires().before(new Date())) {
-                loadScheudle(adapter, scheduleFragment);
-                return;
+        new AsyncTask<Void, Void, Boolean>() {
+
+            Schedule schedule;
+            List<UserCalendar> calendar = new ArrayList<UserCalendar>();
+            Collection<Schedule> scheduleList;
+
+            @Override
+            protected Boolean doInBackground(Void... params) {
+
+                Collection<UserCalendar> read = userCalendarStore.readAll();
+                if (read != null && read.size() > 0) {
+                    calendar = new ArrayList<UserCalendar>(read);
+                }
+
+                Collection<SyncStats> stats = statsStore.readAll();
+                if (stats.isEmpty()) {
+                    loadSchedule(adapter, scheduleFragment);
+                    return false;
+                } else {
+                    SyncStats stat = stats.iterator().next();
+                    if (stat.getScheduleExpires().before(new Date())) {
+                        loadSchedule(adapter, scheduleFragment);
+                        return false;
+                    }
+                }
+                //check Store
+                scheduleList = scheduleStore.readAll();
+                if (scheduleList.isEmpty()) {
+                    loadSchedule(adapter, scheduleFragment);
+                    return false;
+                }
+                return true;
             }
-        }
-        //check Store
-        Collection<Schedule> scheduleList = scheduleStore.readAll();
-        if (scheduleList.isEmpty()) {
-            loadScheudle(adapter, scheduleFragment);
-            return;
-        }
 
-        schedule = scheduleList.iterator().next();
+            @Override
+            protected void onPostExecute(Boolean execute) {
+                if (execute) {
+                    schedule = scheduleList.iterator().next();
+                    adapter.update(schedule, calendar);
+                }
+            }
+        }.execute(null);
 
-        adapter.update(schedule, calendar);
 
     }
 
@@ -255,7 +272,7 @@ public class DevnexusApplication extends Application {
         return scheduleStore.readAll().iterator().next();
     }
 
-    private void loadScheudle(final ScheduleAdapter adapter, final ScheduleFragment scheduleFragment) {
+    private void loadSchedule(final ScheduleAdapter adapter, final ScheduleFragment scheduleFragment) {
 
         schedulePipe = pipeline.get("schedule");
         schedulePipe.read(new Callback<List<Schedule>>() {

@@ -2,10 +2,12 @@ package org.devnexus.vo;
 
 import org.jboss.aerogear.android.RecordId;
 
+import java.io.Serializable;
+
 /**
  * Created by summers on 11/13/13.
  */
-public class Schedule {
+public class Schedule implements Serializable {
 
     @RecordId
     private Long id = -1l;

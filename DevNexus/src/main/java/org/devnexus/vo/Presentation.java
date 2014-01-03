@@ -1,8 +1,9 @@
 package org.devnexus.vo;
 
+import java.io.Serializable;
 import java.util.Date;
 
-public class Presentation {
+public class Presentation implements Serializable {
     public int id;
     public Date createdDate;
     public Date updatedDate;

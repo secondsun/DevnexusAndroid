@@ -1,5 +1,6 @@
 package org.devnexus.vo;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -7,7 +8,7 @@ import java.util.List;
 /**
  * Created by summers on 11/13/13.
  */
-public class ScheduleItemList {
+public class ScheduleItemList implements Serializable {
     public int numberOfSessions = 0;
     public int numberOfKeynoteSessions = 0;
     public int numberOfBreakoutSessions = 0;

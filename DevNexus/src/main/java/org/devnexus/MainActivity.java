@@ -169,7 +169,6 @@ public class MainActivity extends ActionBarActivity implements
     }
 
 
-
     @Override
     protected void onStart() {
         super.onStart();
@@ -221,6 +220,12 @@ public class MainActivity extends ActionBarActivity implements
         FragmentManager fragmentManager = getSupportFragmentManager();
 
         if (fragmentManager.getFragments().get(0) instanceof GalleriaMapFragment && position == 1) {
+            drawerLayout.closeDrawer(drawerList);
+            return;
+        } else if (fragmentManager.getFragments().get(0) instanceof ScheduleFragment && position == 0) {
+            drawerLayout.closeDrawer(drawerList);
+            return;
+        } else if (fragmentManager.getFragments().get(0) instanceof CountDownFragment && position == 2) {
             drawerLayout.closeDrawer(drawerList);
             return;
         }

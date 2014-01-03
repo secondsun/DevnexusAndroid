@@ -1,8 +1,9 @@
 package org.devnexus.vo;
 
+import java.io.Serializable;
 import java.util.Date;
 
-public class Speaker {
+public class Speaker implements Serializable {
     public int id;
     public Date createdDate;
     public Date updatedDate;
