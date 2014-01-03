@@ -1,7 +1,6 @@
 package org.devnexus.fragments;
 
 import android.app.Activity;
-import android.content.Context;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.util.Log;
@@ -9,13 +8,11 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
 import android.widget.ListView;
-import android.widget.TextView;
 
 import org.devnexus.DevnexusApplication;
 import org.devnexus.R;
-import org.devnexus.util.ResourceUtils;
+import org.devnexus.adapters.SessionAdapter;
 import org.devnexus.util.SessionPickerReceiver;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.ScheduleItem;
@@ -127,60 +124,5 @@ public class SessionPickerFragment extends DialogFragment {
         return view;
     }
 
-    private static class SessionAdapter extends ArrayAdapter<ScheduleItem> {
-
-        private static final String TAG = SessionAdapter.class.getSimpleName();
-
-        public SessionAdapter(Context context, int resource) {
-            super(context, resource);
-        }
-
-        @Override
-        public View getView(int position, View convertView, ViewGroup parent) {
-
-            convertView = getItemView(convertView);
-
-            ViewHolder holder = (ViewHolder) convertView.getTag();
-
-            ScheduleItem item = getItem(position);
-
-
-            holder.date.setBackgroundResource(ResourceUtils.trackCSSToColor(item.room.cssStyleName));
-            if (item.room != null && item.room.name != null)
-                holder.roomName.setText(item.room.name);
-            if (item.presentation != null) {
-                holder.title.setText(item.presentation.title);
-            } else {
-                holder.title.setText(item.title);
-            }
-            holder.date.setText(format.format(item.fromTime));
-            holder.sessionId = item.id;
-
-            return convertView;
-
-        }
-
-        private View getItemView(View convertView) {
-            if (convertView == null || convertView.findViewById(R.id.session_room) == null) {
-                Log.d(TAG, "inflating item.  Convert was " + convertView);
-                LayoutInflater inflater = (LayoutInflater) getContext().getSystemService(Context.LAYOUT_INFLATER_SERVICE);
-                convertView = inflater.inflate(R.layout.schedule_list_item, null);
-                ViewHolder holder = new ViewHolder();
-                holder.date = ((TextView) convertView.findViewById(R.id.start_time));
-                holder.roomName = ((TextView) convertView.findViewById(R.id.session_room));
-                holder.title = ((TextView) convertView.findViewById(R.id.session_title));
-                convertView.setTag(holder);
-            }
-            return convertView;
-        }
-
-    }
-
-    private static class ViewHolder {
-        private TextView date;
-        private TextView title;
-        private TextView roomName;
-        private Integer sessionId;
-    }
 
 }
