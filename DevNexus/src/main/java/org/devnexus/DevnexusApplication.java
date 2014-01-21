@@ -2,7 +2,6 @@ package org.devnexus;
 
 import android.app.Activity;
 import android.app.Application;
-import android.os.AsyncTask;
 import android.os.Handler;
 import android.util.Log;
 
@@ -21,7 +20,6 @@ import org.devnexus.fragments.ScheduleFragment;
 import org.devnexus.util.AccountUtil;
 import org.devnexus.util.CountDownCallback;
 import org.devnexus.vo.Schedule;
-import org.devnexus.vo.SyncStats;
 import org.devnexus.vo.UserCalendar;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.DataManager;
@@ -36,7 +34,7 @@ import org.jboss.aerogear.android.impl.pipeline.GsonResponseParser;
 import org.jboss.aerogear.android.impl.pipeline.PipeConfig;
 import org.jboss.aerogear.android.pipeline.Pipe;
 import org.jboss.aerogear.android.sync.PeriodicDataSynchronizer;
-import org.jboss.aerogear.android.sync.PeriodicSynchronizerConfig;
+import org.jboss.aerogear.android.sync.PeriodicDataSynchronizer.PeriodicSynchronizerConfig;
 import org.jboss.aerogear.android.sync.Synchronizer;
 import org.jboss.aerogear.android.sync.TwoWaySqlSynchronizer;
 import org.jboss.aerogear.android.unifiedpush.PushConfig;
@@ -48,9 +46,6 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Calendar;
-import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -68,7 +63,6 @@ public class DevnexusApplication extends Application {
     public static DevnexusApplication CONTEXT = null;
     private SQLStore<Schedule> scheduleStore;
     private SQLStore<UserCalendar> userCalendarStore;
-    private SQLStore<SyncStats> statsStore;
     private Authenticator authenticator;
     private TwoWaySqlSynchronizer<UserCalendar> userCalendarSync;
 
@@ -77,7 +71,6 @@ public class DevnexusApplication extends Application {
     private PeriodicDataSynchronizer<Schedule> scheduleSynchronizer;
 
     private Pipe<Schedule> schedulePipe;
-    private Pipe<UserCalendar> userCalendarPipe;
 
     private final DataManager dm = new DataManager();
     private final Pipeline pipeline;
@@ -147,7 +140,6 @@ public class DevnexusApplication extends Application {
         userCalendarPipeConfig.setName("calendar");
         userCalendarPipeConfig.setAuthModule(module);
         userCalendarPipeConfig.setResponseParser(new GsonResponseParser(builder.create()));
-        userCalendarPipe = pipeline.pipe(UserCalendar.class, userCalendarPipeConfig);
 
         StoreConfig scheduleItemStoreConfig = new StoreConfig();
         scheduleItemStoreConfig.setType(StoreTypes.SQL);
@@ -163,13 +155,7 @@ public class DevnexusApplication extends Application {
         userCalendarStoreConfig.setBuilder(builder);
         userCalendarStore = (SQLStore<UserCalendar>) dm.store("userCalendar", userCalendarStoreConfig);
 
-        StoreConfig syncStatsStoreConfig = new StoreConfig();
-        syncStatsStoreConfig.setKlass(SyncStats.class);
-        syncStatsStoreConfig.setType(StoreTypes.SQL);
-        syncStatsStoreConfig.setBuilder(builder);
-        syncStatsStoreConfig.setContext(getApplicationContext());
 
-        statsStore = (SQLStore<SyncStats>) dm.store("stats", syncStatsStoreConfig);
 
         TwoWaySqlSynchronizer.TwoWaySqlSynchronizerConfig syncConfig = new TwoWaySqlSynchronizer.TwoWaySqlSynchronizerConfig();
         syncConfig.setKlass(UserCalendar.class);
@@ -178,20 +164,22 @@ public class DevnexusApplication extends Application {
 
         userCalendarSync = new TwoWaySqlSynchronizer<UserCalendar>(syncConfig);
 
-        PeriodicSynchronizerConfig scheduleConfig = new PeriodicSynchronizerConfig();
+        PeriodicSynchronizerConfig scheduleConfig = new PeriodicSynchronizerConfig(Schedule.class);
         scheduleConfig.setPeriod(3600);
+        scheduleConfig.setPipeConfig(schedulePipeConfig);
+        scheduleConfig.setStoreConfig(scheduleItemStoreConfig);
 
+        scheduleSynchronizer = new PeriodicDataSynchronizer<Schedule>(scheduleConfig);
 
         // Create a PushConfig for the UnifiedPush Server:
         pushConfig = new PushConfig(PUSH_URL, "402595014005");
         pushConfig.setVariantID("a26c1609-873e-427e-9106-7a6d435cbc78");
         pushConfig.setSecret("5264fdc8-f0e6-480a-8725-f24caa9440e5");
 
-        CountDownLatch latch = new CountDownLatch(3);
+        CountDownLatch latch = new CountDownLatch(2);
         CountDownCallback callback = new CountDownCallback(latch);
 
         userCalendarStore.open(callback);
-        statsStore.open(callback);
         scheduleStore.open(callback);
 
 
@@ -201,11 +189,12 @@ public class DevnexusApplication extends Application {
             e.printStackTrace();
         }
 
-        latch = new CountDownLatch(1);
+        latch = new CountDownLatch(2);
         callback = new CountDownCallback(latch);
 
 
         userCalendarSync.beginSync(this, callback);
+        scheduleSynchronizer.beginSync(this, callback);
 
         try {
             latch.await(1000, TimeUnit.MILLISECONDS);
@@ -221,92 +210,13 @@ public class DevnexusApplication extends Application {
     }
 
     public void getSchedule(final ScheduleAdapter adapter, final ScheduleFragment scheduleFragment) {
-
-        new AsyncTask<Void, Void, Boolean>() {
-
-            Schedule schedule;
-            List<UserCalendar> calendar = new ArrayList<UserCalendar>();
-            Collection<Schedule> scheduleList;
-
-            @Override
-            protected Boolean doInBackground(Void... params) {
-
-                Collection<UserCalendar> read = userCalendarStore.readAll();
-                if (read != null && read.size() > 0) {
-                    calendar = new ArrayList<UserCalendar>(read);
-                }
-
-                Collection<SyncStats> stats = statsStore.readAll();
-                if (stats.isEmpty()) {
-                    loadSchedule(adapter, scheduleFragment);
-                    return false;
-                } else {
-                    SyncStats stat = stats.iterator().next();
-                    if (stat.getScheduleExpires().before(new Date())) {
-                        loadSchedule(adapter, scheduleFragment);
-                        return false;
-                    }
-                }
-                //check Store
-                scheduleList = scheduleStore.readAll();
-                if (scheduleList.isEmpty()) {
-                    loadSchedule(adapter, scheduleFragment);
-                    return false;
-                }
-                return true;
-            }
-
-            @Override
-            protected void onPostExecute(Boolean execute) {
-                if (execute) {
-                    schedule = scheduleList.iterator().next();
-                    adapter.update(schedule, calendar);
-                }
-            }
-        }.execute(null);
-
-
+        if (scheduleStore.readAll() == null || scheduleStore.readAll().isEmpty()) {
+            scheduleSynchronizer.loadRemoteChanges();
+        }
     }
 
     public Schedule getScheduleFromDataStore() {
         return scheduleStore.readAll().iterator().next();
-    }
-
-    private void loadSchedule(final ScheduleAdapter adapter, final ScheduleFragment scheduleFragment) {
-
-        schedulePipe = pipeline.get("schedule");
-        schedulePipe.read(new Callback<List<Schedule>>() {
-            @Override
-            public void onSuccess(final List<Schedule> schedules) {
-                new Handler(getMainLooper()).post(new Runnable() {
-                    @Override
-                    public void run() {
-
-                        Schedule schedule = schedules.get(0);
-                        scheduleStore.reset();
-                        scheduleStore.save(schedule);
-                        statsStore.reset();
-                        adapter.update(schedule, new ArrayList<UserCalendar>());
-
-                        loadCalendar(adapter, scheduleFragment);
-
-                        SyncStats expiresTomorrow = new SyncStats();
-                        Calendar tomorrow = Calendar.getInstance();
-                        tomorrow.add(Calendar.DATE, 1);
-                        expiresTomorrow.setScheduleExpires(tomorrow.getTime());
-                        expiresTomorrow.setCalendarExpires(tomorrow.getTime());
-                        statsStore.save(expiresTomorrow);
-
-                    }
-                });
-
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-                Log.e("LOAD_CAL", e.getMessage(), e);
-            }
-        });
     }
 
     private void loadCalendar(final ScheduleAdapter adapter, ScheduleFragment scheduleFragment) {
