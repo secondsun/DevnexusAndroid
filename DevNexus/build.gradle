@@ -25,9 +25,10 @@ android {
 
 dependencies {
     compile 'org.jboss.aerogear:aerogear-android:1.4.0-SNAPSHOT@aar'
-    compile "com.android.support:support-v4:18.0.+"
+    compile 'com.android.support:support-v4:18.0.+'
     compile 'com.android.support:appcompat-v7:19.0.0'
     compile 'com.google.android.gms:play-services:4.0.30'
     compile 'com.google.code.gson:gson:2.2.2'
     compile 'com.google.guava:guava:13.0.1'
+    compile files('build/exploded-bundles/OrgJbossAerogearAerogearAndroid140SNAPSHOT.aar/classes.jar')
 }

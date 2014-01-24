@@ -101,6 +101,7 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
                         accountName = AccountUtil.getUsername(DevnexusApplication.CONTEXT);
                         accountId = "";
                         headerAndBodyCallback.onSuccess(new HeaderAndBody(new byte[0], new HashMap<String, Object>()));
+                        return;
                     }
 
                     final String accessToken = GoogleAuthUtil.getToken(appContext,

@@ -307,10 +307,11 @@ public class MainActivity extends ActionBarActivity implements
                         AccountUtil.setConnected(getApplicationContext(), true);
                         AccountUtil.setUsername(getApplicationContext(), accountName);
 
+                        ((DevnexusApplication) getApplication()).registerForPush(accountName);
+                        ((DevnexusApplication) getApplication()).beginSync();
+
                         Intent syncConfigIntent = new Intent(getApplicationContext(), ScheduleSyncService.class);
                         startService(syncConfigIntent);
-
-                        ((DevnexusApplication) getApplication()).registerForPush(accountName);
 
                         Intent i = new Intent(getApplicationContext(), MainActivity.class);
                         startActivity(i);

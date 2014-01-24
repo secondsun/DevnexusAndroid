@@ -68,7 +68,7 @@ public class TrackViewFragment extends DialogFragment {
                 String trackName = args.getString(ROOM_NAME);
 
                 if (schedule == null) {
-                    Schedule scheduleFromDb = ((DevnexusApplication) activity.getApplication()).getScheduleFromDataStore();
+                    Schedule scheduleFromDb = ((DevnexusApplication) activity.getApplication()).getSchedule();
                     schedule = new ArrayList<ScheduleItem>(10);
                     for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
                         if (scheduleItem.room.name.equals(trackName)) {

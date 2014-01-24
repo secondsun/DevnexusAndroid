@@ -80,7 +80,7 @@ public class SessionPickerFragment extends DialogFragment {
         }
 
         if (schedule == null) {
-            Schedule scheduleFromDb = ((DevnexusApplication) activity.getApplication()).getScheduleFromDataStore();
+            Schedule scheduleFromDb = ((DevnexusApplication) activity.getApplication()).getSchedule();
             schedule = new ArrayList<ScheduleItem>(10);
             for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
                 if (time == null) {

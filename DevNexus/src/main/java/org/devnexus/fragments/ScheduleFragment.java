@@ -32,8 +32,10 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
     private ScheduleAdapter adapter;
     private ListView view;
 
+    private DevnexusApplication application;
+
     private SQLStore<UserCalendar> calendarStore;
-    private TwoWaySqlSynchronizer<UserCalendar> synchronizer;
+    private TwoWaySqlSynchronizer<UserCalendar> calendarSync;
 
     public ScheduleFragment() {
     }
@@ -41,11 +43,12 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
+        application = (DevnexusApplication) activity.getApplication();
         if (adapter == null) {
             adapter = new ScheduleAdapter(new Schedule(), new ArrayList<UserCalendar>(), activity.getApplicationContext());
-            ((DevnexusApplication)getActivity().getApplication()).getSchedule(adapter, this);
+            adapter.update(application.getCalendar());
             calendarStore = ((DevnexusApplication) getActivity().getApplication()).getCalendarStore();
-            synchronizer = ((DevnexusApplication) getActivity().getApplication()).getUserCalendarSync();
+            calendarSync = ((DevnexusApplication) getActivity().getApplication()).getUserCalendarSync();
         }
     }
 
@@ -61,13 +64,14 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
     @Override
     public void onResume() {
         super.onResume();
-        DevnexusApplication.CONTEXT.getUserCalendarSync().addListener(this);
+        calendarSync.addListener(this);
+        adapter.update(application.getCalendar());
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        DevnexusApplication.CONTEXT.getUserCalendarSync().removeListener(this);
+        calendarSync.removeListener(this);
     }
 
     @Override
@@ -106,7 +110,7 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
 
         adapter.update(new ArrayList<UserCalendar>(calendarStore.readAll()));
         adapter.notifyDataSetChanged();
-        synchronizer.sync();
+        calendarSync.sync();
 
     }
 

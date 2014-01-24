@@ -14,9 +14,7 @@ import com.google.gson.JsonPrimitive;
 import com.google.gson.JsonSerializationContext;
 import com.google.gson.JsonSerializer;
 
-import org.devnexus.adapters.ScheduleAdapter;
 import org.devnexus.auth.GooglePlusAuthenticationModule;
-import org.devnexus.fragments.ScheduleFragment;
 import org.devnexus.util.AccountUtil;
 import org.devnexus.util.CountDownCallback;
 import org.devnexus.vo.Schedule;
@@ -35,6 +33,7 @@ import org.jboss.aerogear.android.impl.pipeline.PipeConfig;
 import org.jboss.aerogear.android.pipeline.Pipe;
 import org.jboss.aerogear.android.sync.PeriodicDataSynchronizer;
 import org.jboss.aerogear.android.sync.PeriodicDataSynchronizer.PeriodicSynchronizerConfig;
+import org.jboss.aerogear.android.sync.SynchronizeEventListener;
 import org.jboss.aerogear.android.sync.Synchronizer;
 import org.jboss.aerogear.android.sync.TwoWaySqlSynchronizer;
 import org.jboss.aerogear.android.unifiedpush.PushConfig;
@@ -46,6 +45,8 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
@@ -62,7 +63,9 @@ public class DevnexusApplication extends Application {
     private static final URI PUSH_URL;
     public static DevnexusApplication CONTEXT = null;
     private SQLStore<Schedule> scheduleStore;
+    private List<Schedule> currentSchedule = new ArrayList<Schedule>();
     private SQLStore<UserCalendar> userCalendarStore;
+    private List<UserCalendar> currentCalendar = new ArrayList<UserCalendar>();
     private Authenticator authenticator;
     private TwoWaySqlSynchronizer<UserCalendar> userCalendarSync;
 
@@ -189,59 +192,20 @@ public class DevnexusApplication extends Application {
             e.printStackTrace();
         }
 
-        latch = new CountDownLatch(2);
-        callback = new CountDownCallback(latch);
-
-
-        userCalendarSync.beginSync(this, callback);
-        scheduleSynchronizer.beginSync(this, callback);
-
-        try {
-            latch.await(1000, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
         if (AccountUtil.hasConnected(this)) {
+            beginSync();
             registerForPush(AccountUtil.getUsername(this));
         }
 
-
     }
 
-    public void getSchedule(final ScheduleAdapter adapter, final ScheduleFragment scheduleFragment) {
-        if (scheduleStore.readAll() == null || scheduleStore.readAll().isEmpty()) {
-            scheduleSynchronizer.loadRemoteChanges();
-        }
+    public Schedule getSchedule() {
+        return currentSchedule.get(0);
     }
 
-    public Schedule getScheduleFromDataStore() {
-        return scheduleStore.readAll().iterator().next();
+    public List<UserCalendar> getCalendar() {
+        return new ArrayList<UserCalendar>(currentCalendar);
     }
-
-    private void loadCalendar(final ScheduleAdapter adapter, ScheduleFragment scheduleFragment) {
-
-        userCalendarSync.resetToRemoteState(new Callback<List<UserCalendar>>() {
-            @Override
-            public void onSuccess(final List<UserCalendar> schedules) {
-
-                mainLoopHandler.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        adapter.update(schedules);
-                    }
-                });
-
-            }
-
-            @Override
-            public void onFailure(Exception e) {
-                Log.e("LOAD_CAL", e.getMessage(), e);
-            }
-        });
-
-    }
-
 
     public AuthenticationModule getAuth(Activity mainActivity) {
         return authenticator.get("google", mainActivity);
@@ -275,4 +239,75 @@ public class DevnexusApplication extends Application {
     public Synchronizer getScheduleSync() {
         return scheduleSynchronizer;
     }
+
+    private static class SyncListener<T> implements SynchronizeEventListener<T> {
+
+        private final List<T> appCollection;
+
+
+        private SyncListener(List<T> appCollection) {
+            this.appCollection = appCollection;
+        }
+
+
+        @Override
+        public void dataUpdated(Collection<T> newData) {
+            appCollection.clear();
+            appCollection.addAll(newData);
+        }
+
+        @Override
+        public T resolveConflicts(T clientData, T serverData) {
+            return null;
+        }
+    }
+
+    public void beginSync() {
+
+        CountDownLatch latch = new CountDownLatch(2);
+        CountDownCallback callback = new CountDownCallback(latch);
+
+        userCalendarSync.beginSync(this, callback);
+        scheduleSynchronizer.beginSync(this, callback);
+        try {
+            latch.await(1000, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+
+        userCalendarSync.addListener(new SyncListener<UserCalendar>(currentCalendar));
+        scheduleSynchronizer.addListener(new SyncListener<Schedule>(currentSchedule));
+
+        if (scheduleStore.isEmpty()) {
+            scheduleSynchronizer.loadRemoteChanges();
+        } else {
+            Collection<Schedule> temp = scheduleStore.readAll();
+            currentSchedule.clear();
+            currentSchedule.addAll(temp);
+        }
+
+        if (userCalendarStore.isEmpty()) {
+            latch = new CountDownLatch(1);
+            callback = new CountDownCallback(latch);
+
+            userCalendarSync.resetToRemoteState(callback);
+            try {
+                latch.await(1000, TimeUnit.MILLISECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+
+            Collection<UserCalendar> temp = userCalendarStore.readAll();
+            currentCalendar.clear();
+            currentCalendar.addAll(temp);
+
+        } else {
+            Collection<UserCalendar> temp = userCalendarStore.readAll();
+            currentCalendar.clear();
+            currentCalendar.addAll(temp);
+            userCalendarSync.loadRemoteChanges();
+        }
+    }
+
 }

@@ -1,6 +1,8 @@
 package org.devnexus.adapters;
 
 import android.content.Context;
+import android.os.Handler;
+import android.os.Looper;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -23,7 +25,7 @@ import java.util.List;
 
 /**
  * Created by summers on 12/2/13.
- *
+ * <p/>
  * This is the list adapter for the custom schedule lists
  */
 public class ScheduleAdapter extends BaseAdapter {
@@ -65,7 +67,6 @@ public class ScheduleAdapter extends BaseAdapter {
         }
 
 
-
     }
 
     public void update(Schedule schedule, List<UserCalendar> calendar) {
@@ -84,7 +85,12 @@ public class ScheduleAdapter extends BaseAdapter {
             }
         }
 
-        super.notifyDataSetChanged();
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                ScheduleAdapter.super.notifyDataSetChanged();
+            }
+        });
     }
 
     public void update(List<UserCalendar> calendar) {
@@ -104,7 +110,12 @@ public class ScheduleAdapter extends BaseAdapter {
             }
         }
 
-        super.notifyDataSetChanged();
+        new Handler(Looper.getMainLooper()).post(new Runnable() {
+            @Override
+            public void run() {
+                ScheduleAdapter.super.notifyDataSetChanged();
+            }
+        });
     }
 
     @Override
@@ -114,7 +125,7 @@ public class ScheduleAdapter extends BaseAdapter {
 
     @Override
     public Object getItem(int position) {
-        if (position == 0 ) {
+        if (position == 0) {
             return dayOne;
         } else if (position == dayOneSize + 1) {
             return dayTwo;
@@ -137,11 +148,11 @@ public class ScheduleAdapter extends BaseAdapter {
 
     @Override
     public int getItemViewType(int position) {
-        if (position == 0 ) {
+        if (position == 0) {
             return DATE_TYPE;
         } else if (position == dayOneSize + 1) {
             return DATE_TYPE;
-        }  else if (position > dayOneSize) {
+        } else if (position > dayOneSize) {
             return ITEM_TYPE;
         } else {
             return ITEM_TYPE;
@@ -154,7 +165,7 @@ public class ScheduleAdapter extends BaseAdapter {
         switch (getItemViewType(position)) {
             case DATE_TYPE:
                 convertView = getDateView(convertView);
-                ((ViewHolder)convertView.getTag()).date.setText(getDateHeader(position));
+                ((ViewHolder) convertView.getTag()).date.setText(getDateHeader(position));
                 return convertView;
             case ITEM_TYPE:
                 convertView = getItemView(convertView);
@@ -164,7 +175,7 @@ public class ScheduleAdapter extends BaseAdapter {
                 ScheduleItem item = calendarEntry.item;
                 holder.date.setText(format.format(calendarEntry.fromTime));
 
-                if (item  != null) {
+                if (item != null) {
                     holder.date.setBackgroundResource(ResourceUtils.trackCSSToColor(item.room.cssStyleName));
                     if (item.room != null && item.room.name != null)
                         holder.roomName.setText(item.room.name);
@@ -189,7 +200,7 @@ public class ScheduleAdapter extends BaseAdapter {
     private View getDateView(View convertView) {
         if (convertView == null || convertView.findViewById(R.id.date) == null) {
             Log.d(TAG, "inflating date");
-            LayoutInflater inflater = (LayoutInflater) appContext.getSystemService( Context.LAYOUT_INFLATER_SERVICE );
+            LayoutInflater inflater = (LayoutInflater) appContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             convertView = inflater.inflate(R.layout.date_breaker_list_item, null);
             ViewHolder holder = new ViewHolder();
             holder.date = (TextView) convertView.findViewById(R.id.date);
@@ -201,12 +212,12 @@ public class ScheduleAdapter extends BaseAdapter {
     private View getItemView(View convertView) {
         if (convertView == null || convertView.findViewById(R.id.session_room) == null) {
             Log.d(TAG, "inflating item.  Convert was " + convertView);
-            LayoutInflater inflater = (LayoutInflater) appContext.getSystemService( Context.LAYOUT_INFLATER_SERVICE );
+            LayoutInflater inflater = (LayoutInflater) appContext.getSystemService(Context.LAYOUT_INFLATER_SERVICE);
             convertView = inflater.inflate(R.layout.schedule_list_item, null);
             ViewHolder holder = new ViewHolder();
-            holder.date = ((TextView)convertView.findViewById(R.id.start_time));
-            holder.roomName = ((TextView)convertView.findViewById(R.id.session_room));
-            holder.title = ((TextView)convertView.findViewById(R.id.session_title));
+            holder.date = ((TextView) convertView.findViewById(R.id.start_time));
+            holder.roomName = ((TextView) convertView.findViewById(R.id.session_room));
+            holder.title = ((TextView) convertView.findViewById(R.id.session_title));
             convertView.setTag(holder);
         }
         return convertView;
