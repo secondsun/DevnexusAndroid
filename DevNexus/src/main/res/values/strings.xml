@@ -9,5 +9,9 @@
     <string name="title_social">Social</string>
     <string name="open_drawer">Open Drawer</string>
     <string name="close_drawer">Close Navigation</string>
+    <string name="title_activity_loading">LoadingActivity</string>
+    <string name="dummy_button">Dummy Button</string>
+    <string name="dummy_content">DUMMY\nCONTENT</string>
+    <string name="title_activity_google_connect">GoogleConnectActivity</string>
 
 </resources>

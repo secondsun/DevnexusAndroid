@@ -2,7 +2,6 @@ package org.devnexus.fragments;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
-import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -144,10 +143,10 @@ public class GalleriaMapFragment extends Fragment implements
 
     public void onDestroyView() {
         super.onDestroyView();
-        Fragment fragment = (getFragmentManager().findFragmentById(R.id.map));
-        FragmentTransaction ft = getActivity().getSupportFragmentManager().beginTransaction();
-        ft.remove(fragment);
-        ft.commit();
+//        Fragment fragment = (getFragmentManager().findFragmentById(R.id.map));
+//        FragmentTransaction ft = getActivity().getSupportFragmentManager().beginTransaction();
+//        ft.remove(fragment);
+//        ft.commit();
     }
 
 }

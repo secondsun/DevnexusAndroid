@@ -13,16 +13,6 @@ public class AccountUtil {
     private static final String USERNAME = "Devnexus.AccountPres.username";
     private static final String COOKIE = "Devnexus.AccountPres.cookie";
 
-
-    public static boolean hasConnected(Context context) {
-        return prefs(context).getBoolean(HAS_LOGGED_IN, false);
-
-    }
-
-    public static void setConnected(Context context, boolean connected) {
-        edit(context).putBoolean(HAS_LOGGED_IN, connected).commit();
-    }
-
     private static SharedPreferences prefs(Context context) {
         return context.getSharedPreferences(ACCOUNT_PREFS, Context.MODE_PRIVATE);
     }

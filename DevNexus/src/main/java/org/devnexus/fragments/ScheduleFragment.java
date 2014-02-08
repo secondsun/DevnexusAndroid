@@ -1,6 +1,12 @@
 package org.devnexus.fragments;
 
+import android.accounts.Account;
 import android.app.Activity;
+import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
@@ -9,18 +15,32 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonDeserializationContext;
+import com.google.gson.JsonDeserializer;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonPrimitive;
+import com.google.gson.JsonSerializationContext;
+import com.google.gson.JsonSerializer;
+
 import org.devnexus.DevnexusApplication;
 import org.devnexus.adapters.ScheduleAdapter;
+import org.devnexus.aerogear.SynchronizeEventListener;
+import org.devnexus.auth.DevNexusAuthenticator;
+import org.devnexus.sync.DevNexusSyncAdapter;
+import org.devnexus.util.AccountUtil;
 import org.devnexus.util.SessionPickerReceiver;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.ScheduleItem;
 import org.devnexus.vo.UserCalendar;
-import org.jboss.aerogear.android.impl.datamanager.SQLStore;
-import org.jboss.aerogear.android.sync.SynchronizeEventListener;
-import org.jboss.aerogear.android.sync.TwoWaySqlSynchronizer;
 
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Date;
+import java.util.List;
 
 /**
  * Created by summers on 11/13/13.
@@ -32,12 +52,35 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
     private ScheduleAdapter adapter;
     private ListView view;
 
+    private static final Gson GSON;
+
+    static {
+
+        GsonBuilder builder = new GsonBuilder();
+
+        builder.registerTypeAdapter(Date.class, new JsonDeserializer() {
+            public Date deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
+                return new Date(json.getAsJsonPrimitive().getAsLong());
+            }
+        });
+
+        builder.registerTypeAdapter(Date.class, new JsonSerializer<Date>() {
+            @Override
+            public JsonElement serialize(Date src, Type typeOfSrc, JsonSerializationContext
+                    context) {
+                return src == null ? null : new JsonPrimitive(src.getTime());
+            }
+        });
+
+        GSON = builder.create();
+    }
+
     private DevnexusApplication application;
 
-    private SQLStore<UserCalendar> calendarStore;
-    private TwoWaySqlSynchronizer<UserCalendar> calendarSync;
+    private final Receiver receiver;
 
     public ScheduleFragment() {
+        receiver = new Receiver();
     }
 
     @Override
@@ -47,9 +90,9 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
         if (adapter == null) {
             adapter = new ScheduleAdapter(new Schedule(), new ArrayList<UserCalendar>(), activity.getApplicationContext());
             adapter.update(application.getCalendar());
-            calendarStore = ((DevnexusApplication) getActivity().getApplication()).getCalendarStore();
-            calendarSync = ((DevnexusApplication) getActivity().getApplication()).getUserCalendarSync();
+
         }
+
     }
 
     @Override
@@ -64,14 +107,14 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
     @Override
     public void onResume() {
         super.onResume();
-        calendarSync.addListener(this);
-        adapter.update(application.getCalendar());
+        getActivity().registerReceiver(receiver, new IntentFilter(DevNexusSyncAdapter.CALENDAR_SYNC_FINISH));
+        dataUpdated(application.getCalendar());
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        calendarSync.removeListener(this);
+        getActivity().unregisterReceiver(receiver);
     }
 
     @Override
@@ -102,15 +145,29 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
     }
 
     @Override
-    public void receiveSessionItem(UserCalendar calendarItem, ScheduleItem session) {
+    public void receiveSessionItem(final UserCalendar calendarItem, final ScheduleItem session) {
 
         calendarItem.item = session;
-        calendarStore.remove(calendarItem.getId());
-        calendarStore.save(calendarItem);
+        List<UserCalendar> appCalendar = application.getCalendar();
+        for (UserCalendar cal : appCalendar) {
+            if (cal.getId().equals(calendarItem.getId())) {
+                cal.item = calendarItem.item;
+                adapter.update(appCalendar);
+                break;
+            }
+        }
 
-        adapter.update(new ArrayList<UserCalendar>(calendarStore.readAll()));
-        adapter.notifyDataSetChanged();
-        calendarSync.sync();
+        Bundle settingsBundle = new Bundle();
+        settingsBundle.putBoolean(
+                ContentResolver.SYNC_EXTRAS_MANUAL, true);
+        settingsBundle.putBoolean(
+                ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
+        settingsBundle.putString(
+                DevNexusSyncAdapter.CALENDAR_DATA, GSON.toJson(calendarItem));
+
+
+        ContentResolver.requestSync(new Account(AccountUtil.getUsername(DevnexusApplication.CONTEXT), DevNexusAuthenticator.ACCOUNT_TYPE),
+                "org.devnexus.sync", settingsBundle);
 
     }
 
@@ -128,4 +185,13 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
     public static Fragment newInstance() {
         return new ScheduleFragment();
     }
+
+    private final class Receiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            dataUpdated((List<UserCalendar>) intent.getSerializableExtra(DevNexusSyncAdapter.CALENDAR_DATA));
+        }
+    }
+
 }

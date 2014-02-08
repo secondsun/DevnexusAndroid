@@ -24,7 +24,6 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -95,15 +94,6 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
             public void run() {
                 try {
 
-                    if (AccountUtil.hasConnected(DevnexusApplication.CONTEXT)) {
-                        cookie = AccountUtil.getCookie(DevnexusApplication.CONTEXT);
-                        isLoggedIn = true;
-                        accountName = AccountUtil.getUsername(DevnexusApplication.CONTEXT);
-                        accountId = "";
-                        headerAndBodyCallback.onSuccess(new HeaderAndBody(new byte[0], new HashMap<String, Object>()));
-                        return;
-                    }
-
                     final String accessToken = GoogleAuthUtil.getToken(appContext,
                             authMap.get(ACCOUNT_NAME),
                             "audience:server:client_id:402595014005-cairesrhrd0p75jg62i8vdk4qteca2c4.apps.googleusercontent.com",
@@ -119,6 +109,10 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
                     isLoggedIn = true;
                     accountName = authMap.get(ACCOUNT_NAME);
                     accountId = authMap.get(ACCOUNT_ID);
+
+                    AccountUtil.setUsername(DevnexusApplication.CONTEXT, accountName);
+
+
                     headerAndBodyCallback.onSuccess(result);
 
                 } catch (IOException authEx) {
@@ -143,7 +137,7 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
 
     @Override
     public boolean isLoggedIn() {
-        return isLoggedIn;
+        return true;
     }
 
     @Override
@@ -180,7 +174,7 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
         } catch (Exception e) {
             AccountUtil.setCookie(DevnexusApplication.CONTEXT, "");
             AccountUtil.setUsername(DevnexusApplication.CONTEXT, "");
-            AccountUtil.setConnected(DevnexusApplication.CONTEXT, false);
+
             isLoggedIn = false;
         }
         return isLoggedIn;

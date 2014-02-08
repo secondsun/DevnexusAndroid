@@ -1,84 +1,51 @@
 package org.devnexus;
 
-import android.app.Activity;
+import android.accounts.Account;
 import android.app.Application;
-import android.os.Handler;
+import android.content.BroadcastReceiver;
+import android.content.ContentResolver;
+import android.content.Context;
+import android.content.Intent;
+import android.content.IntentFilter;
+import android.os.Bundle;
 import android.util.Log;
 
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializationContext;
-import com.google.gson.JsonSerializer;
-
+import org.devnexus.auth.DevNexusAuthenticator;
 import org.devnexus.auth.GooglePlusAuthenticationModule;
+import org.devnexus.sync.DevNexusSyncAdapter;
 import org.devnexus.util.AccountUtil;
-import org.devnexus.util.CountDownCallback;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.UserCalendar;
 import org.jboss.aerogear.android.Callback;
-import org.jboss.aerogear.android.DataManager;
-import org.jboss.aerogear.android.Pipeline;
 import org.jboss.aerogear.android.authentication.AuthenticationConfig;
 import org.jboss.aerogear.android.authentication.AuthenticationModule;
 import org.jboss.aerogear.android.authentication.impl.Authenticator;
-import org.jboss.aerogear.android.impl.datamanager.SQLStore;
-import org.jboss.aerogear.android.impl.datamanager.StoreConfig;
-import org.jboss.aerogear.android.impl.datamanager.StoreTypes;
-import org.jboss.aerogear.android.impl.pipeline.GsonResponseParser;
-import org.jboss.aerogear.android.impl.pipeline.PipeConfig;
-import org.jboss.aerogear.android.pipeline.Pipe;
-import org.jboss.aerogear.android.sync.PeriodicDataSynchronizer;
-import org.jboss.aerogear.android.sync.PeriodicDataSynchronizer.PeriodicSynchronizerConfig;
-import org.jboss.aerogear.android.sync.SynchronizeEventListener;
-import org.jboss.aerogear.android.sync.Synchronizer;
-import org.jboss.aerogear.android.sync.TwoWaySqlSynchronizer;
 import org.jboss.aerogear.android.unifiedpush.PushConfig;
 import org.jboss.aerogear.android.unifiedpush.PushRegistrar;
 import org.jboss.aerogear.android.unifiedpush.Registrations;
 
-import java.lang.reflect.Type;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Created by summers on 11/13/13.
  */
 public class DevnexusApplication extends Application {
 
-    private static final URL DEVNEXUS_URL;
 
     private static final String TAG = DevnexusApplication.class.getSimpleName();
+    private static final URL DEVNEXUS_URL;
+
     private static final URI PUSH_URL;
     public static DevnexusApplication CONTEXT = null;
-    private SQLStore<Schedule> scheduleStore;
     private List<Schedule> currentSchedule = new ArrayList<Schedule>();
-    private SQLStore<UserCalendar> userCalendarStore;
     private List<UserCalendar> currentCalendar = new ArrayList<UserCalendar>();
     private Authenticator authenticator;
-    private TwoWaySqlSynchronizer<UserCalendar> userCalendarSync;
-
-    private GsonBuilder builder = new GsonBuilder();
-
-    private PeriodicDataSynchronizer<Schedule> scheduleSynchronizer;
-
-    private Pipe<Schedule> schedulePipe;
-
-    private final DataManager dm = new DataManager();
-    private final Pipeline pipeline;
-
-    private Handler mainLoopHandler;
 
     private final Registrations registrations = new Registrations();
     private PushConfig pushConfig;
@@ -98,22 +65,15 @@ public class DevnexusApplication extends Application {
     }
 
     {
-        pipeline = new Pipeline(DEVNEXUS_URL);
+
         authenticator = new Authenticator(DEVNEXUS_URL);
 
-        builder.registerTypeAdapter(Date.class, new JsonDeserializer() {
-            public Date deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-                return new Date(json.getAsJsonPrimitive().getAsLong());
-            }
-        });
 
-        builder.registerTypeAdapter(Date.class, new JsonSerializer<Date>() {
-            @Override
-            public JsonElement serialize(Date src, Type typeOfSrc, JsonSerializationContext
-                    context) {
-                return src == null ? null : new JsonPrimitive(src.getTime());
-            }
-        });
+        // Create a PushConfig for the UnifiedPush Server:
+        pushConfig = new PushConfig(PUSH_URL, "402595014005");
+        pushConfig.setVariantID("a26c1609-873e-427e-9106-7a6d435cbc78");
+        pushConfig.setSecret("5264fdc8-f0e6-480a-8725-f24caa9440e5");
+
     }
 
     @Override
@@ -121,82 +81,12 @@ public class DevnexusApplication extends Application {
         super.onCreate();
 
         CONTEXT = this;
-
-        mainLoopHandler = new Handler(getMainLooper());
-
         AuthenticationConfig config = new AuthenticationConfig();
-
         config.setLoginEndpoint("loginAndroid.json");
-
         GooglePlusAuthenticationModule module = new GooglePlusAuthenticationModule(DEVNEXUS_URL, config, getApplicationContext());
-
         authenticator.add("google", module);
-
-
-        PipeConfig schedulePipeConfig = new PipeConfig(DEVNEXUS_URL, Schedule.class);
-        schedulePipeConfig.setEndpoint("schedule.json");
-        schedulePipeConfig.setName("schedule");
-        schedulePipeConfig.setResponseParser(new GsonResponseParser(builder.create()));
-        schedulePipe = pipeline.pipe(Schedule.class, schedulePipeConfig);
-
-        PipeConfig userCalendarPipeConfig = new PipeConfig(DEVNEXUS_URL, UserCalendar.class);
-        userCalendarPipeConfig.setName("calendar");
-        userCalendarPipeConfig.setAuthModule(module);
-        userCalendarPipeConfig.setResponseParser(new GsonResponseParser(builder.create()));
-
-        StoreConfig scheduleItemStoreConfig = new StoreConfig();
-        scheduleItemStoreConfig.setType(StoreTypes.SQL);
-        scheduleItemStoreConfig.setKlass(Schedule.class);
-        scheduleItemStoreConfig.setBuilder(builder);
-        scheduleItemStoreConfig.setContext(getApplicationContext());
-        scheduleStore = (SQLStore<Schedule>) dm.store("scheduleItem", scheduleItemStoreConfig);
-
-        StoreConfig userCalendarStoreConfig = new StoreConfig();
-        userCalendarStoreConfig.setType(StoreTypes.SQL);
-        userCalendarStoreConfig.setKlass(UserCalendar.class);
-        userCalendarStoreConfig.setContext(getApplicationContext());
-        userCalendarStoreConfig.setBuilder(builder);
-        userCalendarStore = (SQLStore<UserCalendar>) dm.store("userCalendar", userCalendarStoreConfig);
-
-
-
-        TwoWaySqlSynchronizer.TwoWaySqlSynchronizerConfig syncConfig = new TwoWaySqlSynchronizer.TwoWaySqlSynchronizerConfig();
-        syncConfig.setKlass(UserCalendar.class);
-        syncConfig.setPipeConfig(userCalendarPipeConfig);
-        syncConfig.setStoreConfig(userCalendarStoreConfig);
-
-        userCalendarSync = new TwoWaySqlSynchronizer<UserCalendar>(syncConfig);
-
-        PeriodicSynchronizerConfig scheduleConfig = new PeriodicSynchronizerConfig(Schedule.class);
-        scheduleConfig.setPeriod(3600);
-        scheduleConfig.setPipeConfig(schedulePipeConfig);
-        scheduleConfig.setStoreConfig(scheduleItemStoreConfig);
-
-        scheduleSynchronizer = new PeriodicDataSynchronizer<Schedule>(scheduleConfig);
-
-        // Create a PushConfig for the UnifiedPush Server:
-        pushConfig = new PushConfig(PUSH_URL, "402595014005");
-        pushConfig.setVariantID("a26c1609-873e-427e-9106-7a6d435cbc78");
-        pushConfig.setSecret("5264fdc8-f0e6-480a-8725-f24caa9440e5");
-
-        CountDownLatch latch = new CountDownLatch(2);
-        CountDownCallback callback = new CountDownCallback(latch);
-
-        userCalendarStore.open(callback);
-        scheduleStore.open(callback);
-
-
-        try {
-            latch.await(1000, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-        if (AccountUtil.hasConnected(this)) {
-            beginSync();
-            registerForPush(AccountUtil.getUsername(this));
-        }
-
+        registerReceiver(new CalendarReceiver(), new IntentFilter(DevNexusSyncAdapter.CALENDAR_SYNC_FINISH));
+        registerReceiver(new ScheduleReceiver(), new IntentFilter(DevNexusSyncAdapter.SCHEDULE_SYNC_FINISH));
     }
 
     public Schedule getSchedule() {
@@ -207,18 +97,10 @@ public class DevnexusApplication extends Application {
         return new ArrayList<UserCalendar>(currentCalendar);
     }
 
-    public AuthenticationModule getAuth(Activity mainActivity) {
-        return authenticator.get("google", mainActivity);
+    public AuthenticationModule getAuth() {
+        return authenticator.get("google");
     }
 
-    public TwoWaySqlSynchronizer<UserCalendar> getUserCalendarSync() {
-        return userCalendarSync;
-    }
-
-
-    public SQLStore<UserCalendar> getCalendarStore() {
-        return userCalendarStore;
-    }
 
     public void registerForPush(String accountName) {
         pushConfig.setAlias(accountName);
@@ -236,77 +118,45 @@ public class DevnexusApplication extends Application {
         });
     }
 
-    public Synchronizer getScheduleSync() {
-        return scheduleSynchronizer;
+    public void startUpSync() {
+
+        ContentResolver.setSyncAutomatically(new Account(AccountUtil.getUsername(DevnexusApplication.CONTEXT), DevNexusAuthenticator.ACCOUNT_TYPE), "org.devnexus.sync", true);
+        ContentResolver.addPeriodicSync(new Account(AccountUtil.getUsername(DevnexusApplication.CONTEXT), DevNexusAuthenticator.ACCOUNT_TYPE),
+                "org.devnexus.sync", new Bundle(), 3600);
+
+        // Pass the settings flags by inserting them in a bundle
+        Bundle settingsBundle = new Bundle();
+        settingsBundle.putBoolean(
+                ContentResolver.SYNC_EXTRAS_MANUAL, true);
+        settingsBundle.putBoolean(
+                ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
+
+
+        ContentResolver.requestSync(new Account(AccountUtil.getUsername(DevnexusApplication.CONTEXT), DevNexusAuthenticator.ACCOUNT_TYPE),
+                "org.devnexus.sync", settingsBundle);
+
+        registerForPush(AccountUtil.getUsername(getApplicationContext()));
+
     }
 
-    private static class SyncListener<T> implements SynchronizeEventListener<T> {
-
-        private final List<T> appCollection;
-
-
-        private SyncListener(List<T> appCollection) {
-            this.appCollection = appCollection;
-        }
-
+    public final class CalendarReceiver extends BroadcastReceiver {
 
         @Override
-        public void dataUpdated(Collection<T> newData) {
-            appCollection.clear();
-            appCollection.addAll(newData);
-        }
+        public void onReceive(Context context, Intent intent) {
+            if (intent.hasExtra(DevNexusSyncAdapter.CALENDAR_DATA)) {
 
-        @Override
-        public T resolveConflicts(T clientData, T serverData) {
-            return null;
-        }
-    }
-
-    public void beginSync() {
-
-        CountDownLatch latch = new CountDownLatch(2);
-        CountDownCallback callback = new CountDownCallback(latch);
-
-        userCalendarSync.beginSync(this, callback);
-        scheduleSynchronizer.beginSync(this, callback);
-        try {
-            latch.await(1000, TimeUnit.MILLISECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
-
-        userCalendarSync.addListener(new SyncListener<UserCalendar>(currentCalendar));
-        scheduleSynchronizer.addListener(new SyncListener<Schedule>(currentSchedule));
-
-        if (scheduleStore.isEmpty()) {
-            scheduleSynchronizer.loadRemoteChanges();
-        } else {
-            Collection<Schedule> temp = scheduleStore.readAll();
-            currentSchedule.clear();
-            currentSchedule.addAll(temp);
-        }
-
-        if (userCalendarStore.isEmpty()) {
-            latch = new CountDownLatch(1);
-            callback = new CountDownCallback(latch);
-
-            userCalendarSync.resetToRemoteState(callback);
-            try {
-                latch.await(1000, TimeUnit.MILLISECONDS);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+                currentCalendar = new ArrayList<UserCalendar>((Collection<? extends UserCalendar>) intent.getExtras().getSerializable((DevNexusSyncAdapter.CALENDAR_DATA)));
             }
+        }
+    }
 
-            Collection<UserCalendar> temp = userCalendarStore.readAll();
-            currentCalendar.clear();
-            currentCalendar.addAll(temp);
+    public final class ScheduleReceiver extends BroadcastReceiver {
 
-        } else {
-            Collection<UserCalendar> temp = userCalendarStore.readAll();
-            currentCalendar.clear();
-            currentCalendar.addAll(temp);
-            userCalendarSync.loadRemoteChanges();
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            if (intent.hasExtra(DevNexusSyncAdapter.SCHEDULE_DATA)) {
+                currentSchedule = new ArrayList<Schedule>((Collection<? extends Schedule>) intent.getExtras().getSerializable((DevNexusSyncAdapter.SCHEDULE_DATA)));
+            }
         }
     }
 

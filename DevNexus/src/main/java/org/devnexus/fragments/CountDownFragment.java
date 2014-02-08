@@ -27,7 +27,7 @@ public class CountDownFragment extends Fragment {
         startDate.set(Calendar.DATE, 24);
         startDate.set(Calendar.MONTH, Calendar.FEBRUARY);
 
-        daysUntil = (int) ((startDate.getTime().getTime() - Calendar.getInstance().getTime().getTime())/ DAY_IN_MILLIS );
+        daysUntil = (int) ((startDate.getTime().getTime() - Calendar.getInstance().getTime().getTime()) / DAY_IN_MILLIS);
 
     }
 
@@ -36,7 +36,7 @@ public class CountDownFragment extends Fragment {
     @Override
     public void onAttach(Activity activity) {
         super.onAttach(activity);
-        this.activity =(MainActivity) activity;
+        this.activity = (MainActivity) activity;
     }
 
     @Override
@@ -49,7 +49,7 @@ public class CountDownFragment extends Fragment {
     public void onStart() {
         super.onStart();
         if (activity != null) {
-            view.findViewById(R.id.sign_up).setOnClickListener(activity);
+            //view.findViewById(R.id.sign_up).setOnClickListener(activity);
         }
     }
 
@@ -60,8 +60,8 @@ public class CountDownFragment extends Fragment {
         String text = "Too long...";
         if (daysUntil > 0) {
             text = String.format("%d days.", daysUntil);
-        } else if (daysUntil< -1) {
-            text="Right now!";
+        } else if (daysUntil < -1) {
+            text = "Right now!";
         }
         countdown.setText(text);
 
