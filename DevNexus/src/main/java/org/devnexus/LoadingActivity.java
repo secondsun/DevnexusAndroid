@@ -111,12 +111,20 @@ public class LoadingActivity extends Activity {
             new AsyncTask<Void, Void, ArrayList<UserCalendar>>() {
                 @Override
                 protected ArrayList<UserCalendar> doInBackground(Void... params) {
-                    Cursor cursor = getContentResolver().query(UserCalendarContract.URI, null, null, null, null);
-                    ArrayList<UserCalendar> calendar = new ArrayList<UserCalendar>(cursor.getCount());
-                    while (cursor.moveToNext()) {
-                        calendar.add(GSON.fromJson(cursor.getString(0), UserCalendar.class));
+                    Cursor cursor = null;
+                    try {
+                        cursor = getContentResolver().query(UserCalendarContract.URI, null, null, null, null);
+                        ArrayList<UserCalendar> calendar = new ArrayList<UserCalendar>(cursor.getCount());
+                        while (cursor != null && cursor.moveToNext()) {
+                            calendar.add(GSON.fromJson(cursor.getString(0), UserCalendar.class));
+                        }
+                        return calendar;
+                    } finally {
+                        if (cursor != null) {
+                            cursor.close();
+                        }
                     }
-                    return calendar;
+
                 }
 
                 @Override

@@ -86,22 +86,28 @@ public class SessionPickerFragment extends DialogFragment {
         }
 
         if (schedule == null) {
-            Cursor cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
-
-            if (cursor.moveToNext()) {
-                Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
+            Cursor cursor = null;
+            try {
+                cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
                 schedule = new ArrayList<ScheduleItem>(10);
-                for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
-                    if (time == null) {
-                        Log.e(TAG, "time is null!!!");
+                if (cursor != null && cursor.moveToNext()) {
+                    Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
+                    for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
+                        if (time == null) {
+                            Log.e(TAG, "time is null!!!");
+                        }
+                        Log.e(TAG, format.format(scheduleItem.fromTime) + " vs " + format.format(time));
+                        if (scheduleItem.fromTime.equals(time)) {
+                            schedule.add(scheduleItem);
+                        }
                     }
-                    Log.e(TAG, format.format(scheduleItem.fromTime) + " vs " + format.format(time));
-                    if (scheduleItem.fromTime.equals(time)) {
-                        schedule.add(scheduleItem);
-                    }
+                } else {
+                    //???
                 }
-            } else {
-                //???
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
             }
 
         }

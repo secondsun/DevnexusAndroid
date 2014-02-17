@@ -30,9 +30,10 @@ public final class UserCalendarContract {
      * @param calendarItem
      * @return
      */
-    public static ContentValues valueize(UserCalendar calendarItem) {
+    public static ContentValues valueize(UserCalendar calendarItem, boolean notify) {
         ContentValues values = new ContentValues();
         values.put(DATA, GSON.toJson(calendarItem));
+        values.put(NOTIFY, notify);
         return values;
     }
 }

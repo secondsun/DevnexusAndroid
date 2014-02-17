@@ -200,22 +200,35 @@ public class DevNexusSyncAdapter extends AbstractThreadedSyncAdapter implements 
             });
         } else {
             try {
-                calendarSynchronizer.sync(provider);
-                calendarSynchronizer.loadRemoteChanges(provider);
+                try {
+                    calendarSynchronizer.sync(provider);
+                    calendarSynchronizer.loadRemoteChanges(provider);
+                } catch (RuntimeException ex) {
+                    Log.e(TAG, ex.getMessage(), ex);
+                    syncResult.stats.numIoExceptions++;
+                    sendCalendarSyncFinished(new ArrayList<UserCalendar>(1), ex);
+                    return;
+                }
+
                 syncResult.stats.numUpdates = 1;
                 SingleColumnJsonArrayList cursor = null;
                 try {
                     cursor = (SingleColumnJsonArrayList) provider.query(UserCalendarContract.URI, null, null, null, null);
+                    ArrayList<UserCalendar> calendars = new ArrayList<UserCalendar>();
+                    while (cursor != null && cursor.moveToNext()) {
+                        calendars.add(GSON.fromJson(cursor.getString(0), UserCalendar.class));
+                    }
+                    Collection<UserCalendar> data = calendars;
+                    sendCalendarSyncFinished(data, null);
                 } catch (RemoteException e) {
                     Log.e(TAG, e.getMessage(), e);
                     sendCalendarSyncFinished(new ArrayList<UserCalendar>(1), e);
+                    return;
+                } finally {
+                    if (cursor != null)
+                        cursor.close();
                 }
-                ArrayList<UserCalendar> calendars = new ArrayList<UserCalendar>();
-                while (cursor.moveToNext()) {
-                    calendars.add(GSON.fromJson(cursor.getString(0), UserCalendar.class));
-                }
-                Collection<UserCalendar> data = calendars;
-                sendCalendarSyncFinished(data, null);
+
             } finally {
                 calendarSynchronizer.syncNoMore(getContext(), null);
                 calendarLatch.countDown();
@@ -225,8 +238,8 @@ public class DevNexusSyncAdapter extends AbstractThreadedSyncAdapter implements 
 
 
         try {
-            scheduleLatch.await(20, TimeUnit.SECONDS);
-            calendarLatch.await(20, TimeUnit.SECONDS);
+            scheduleLatch.await(60, TimeUnit.SECONDS);
+            calendarLatch.await(60, TimeUnit.SECONDS);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

@@ -5,6 +5,12 @@
       <root url="jar://$PROJECT_DIR$/DevNexus/build/exploded-bundles/OrgJbossAerogearAerogearAndroid131.aar/classes.jar!/" />
     </CLASSES>
     <JAVADOC />
-    <SOURCES />
+    <SOURCES>
+      <root url="file://$PROJECT_DIR$/../aerogear-android/gen" />
+      <root url="file://$PROJECT_DIR$/../aerogear-android/src" />
+      <root url="file://$PROJECT_DIR$/../aerogear-android/test" />
+      <root url="file://$PROJECT_DIR$/../aerogear-android/target/unpack/apklibs/com.google.android.gms_google-play-services_apklib_14.0.0/src" />
+      <root url="file://$PROJECT_DIR$/../aerogear-android/target/generated-sources/r" />
+    </SOURCES>
   </library>
 </component>

@@ -111,7 +111,7 @@ public class ShadowStore<T> extends SQLiteOpenHelper implements Store<T> {
         Cursor cursor = getDatabase().rawQuery(sql, new String[0]);
         HashMap<Integer, JsonObject> objects = new HashMap<Integer, JsonObject>(cursor.getCount());
         try {
-            while (cursor.moveToNext()) {
+            while (cursor != null && cursor.moveToNext()) {
                 Integer id = cursor.getInt(2);
                 JsonObject object = objects.get(id);
                 if (object == null) {
@@ -121,7 +121,9 @@ public class ShadowStore<T> extends SQLiteOpenHelper implements Store<T> {
                 add(object, cursor.getString(0), cursor.getString(1));
             }
         } finally {
-            cursor.close();
+            if (cursor != null) {
+                cursor.close();
+            }
         }
         ArrayList<T> data = new ArrayList<T>(cursor.getCount());
         for (JsonObject object : objects.values()) {
@@ -148,11 +150,13 @@ public class ShadowStore<T> extends SQLiteOpenHelper implements Store<T> {
         }
 
         try {
-            while (cursor.moveToNext()) {
+            while (cursor != null && cursor.moveToNext()) {
                 add(result, cursor.getString(0), cursor.getString(1));
             }
         } finally {
-            cursor.close();
+            if (cursor != null) {
+                cursor.close();
+            }
         }
 
         return gson.fromJson(result, klass);
@@ -178,17 +182,23 @@ public class ShadowStore<T> extends SQLiteOpenHelper implements Store<T> {
         } else {
             for (Pair<String, String> kv : queryList) {
                 String[] bindArgs = new String[]{kv.first, kv.second};
-                Cursor cursor = getDatabase().rawQuery(sql, bindArgs);
-                while (cursor.moveToNext()) {
-                    String id = cursor.getString(0);
-                    AtomicInteger count = resultCount.get(id);
-                    if (count == null) {
-                        count = new AtomicInteger(0);
-                        resultCount.put(id, count);
+                Cursor cursor = null;
+                try {
+                    cursor = getDatabase().rawQuery(sql, bindArgs);
+                    while (cursor != null && cursor.moveToNext()) {
+                        String id = cursor.getString(0);
+                        AtomicInteger count = resultCount.get(id);
+                        if (count == null) {
+                            count = new AtomicInteger(0);
+                            resultCount.put(id, count);
+                        }
+                        count.incrementAndGet();
                     }
-                    count.incrementAndGet();
+                } finally {
+                    if (cursor != null) {
+                        cursor.close();
+                    }
                 }
-                cursor.close();
             }
         }
         List<T> results = new ArrayList<T>();

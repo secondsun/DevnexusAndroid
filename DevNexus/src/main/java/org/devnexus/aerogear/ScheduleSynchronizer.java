@@ -19,6 +19,7 @@ package org.devnexus.aerogear;
 import android.content.ContentProviderClient;
 import android.content.ContentValues;
 import android.content.Context;
+import android.database.Cursor;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.RemoteException;
@@ -31,7 +32,6 @@ import org.devnexus.util.CountDownCallback;
 import org.devnexus.util.GsonUtils;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.contract.ScheduleContract;
-import org.devnexus.vo.contract.SingleColumnJsonArrayList;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.Pipeline;
 import org.jboss.aerogear.android.impl.datamanager.StoreConfig;
@@ -48,6 +48,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * This Synchronizer uses two SQL databases to manage local state
@@ -172,9 +173,16 @@ public class ScheduleSynchronizer implements Synchronizer<Schedule> {
         ArrayList<Schedule> calendars = new ArrayList<Schedule>();
         synchronized (lock) {
             try {
-                SingleColumnJsonArrayList var = (SingleColumnJsonArrayList) provider.query(ScheduleContract.URI, null, null, null, null);
-                while (var.moveToNext()) {
-                    calendars.add(GSON.fromJson(var.getString(0), Schedule.class));
+                Cursor cursor = null;
+                try {
+                    cursor = provider.query(ScheduleContract.URI, null, null, null, null);
+                    while (cursor != null && cursor.moveToNext()) {
+                        calendars.add(GSON.fromJson(cursor.getString(0), Schedule.class));
+                    }
+                } finally {
+                    if (cursor != null) {
+                        cursor.close();
+                    }
                 }
             } catch (RemoteException e) {
                 Log.e(TAG, e.getMessage(), e);
@@ -185,9 +193,18 @@ public class ScheduleSynchronizer implements Synchronizer<Schedule> {
             Sets.SetView<Schedule> localChanges = Sets.difference(localData, shadowData);
             //pipeConfig.getRequestBuilder().getBody(shadowData)
             for (Schedule change : localChanges) {
-                adapter.save(change, new LoggingCallback());
-                localShadowStore.remove((Serializable) property.getValue(change));
-                localShadowStore.save(change);
+                CountDownLatch latch = new CountDownLatch(1);
+                adapter.save(change, new CountDownCallback<Schedule>(latch));
+                try {
+                    if (!latch.await(60, TimeUnit.SECONDS)) {
+                        throw new RuntimeException("Timeout");
+                    }
+                    localShadowStore.remove((Serializable) property.getValue(change));
+                    localShadowStore.save(change);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
             }
         }
 
@@ -196,6 +213,7 @@ public class ScheduleSynchronizer implements Synchronizer<Schedule> {
     @Override
     public void loadRemoteChanges(final ContentProviderClient provider) {
         final CountDownLatch latch = new CountDownLatch(1);
+        final AtomicReference<Exception> exceptionRef = new AtomicReference<Exception>();
 
 
         synchronized (lock) {
@@ -214,17 +232,28 @@ public class ScheduleSynchronizer implements Synchronizer<Schedule> {
                             values.put(ScheduleContract.DATA, GSON.toJson(change));
                             provider.update(ScheduleContract.URI, values, "", new String[]{change.getId() + ""});
 
-                            SingleColumnJsonArrayList var = (SingleColumnJsonArrayList) provider.query(ScheduleContract.URI, null, null, null, null);
+                            Cursor cursor = null;
                             ArrayList<Schedule> calendars = new ArrayList<Schedule>();
-                            while (var.moveToNext()) {
-                                calendars.add(GSON.fromJson(var.getString(0), Schedule.class));
+                            try {
+                                cursor = provider.query(ScheduleContract.URI, null, null, null, null);
+
+                                while (cursor != null && cursor.moveToNext()) {
+                                    calendars.add(GSON.fromJson(cursor.getString(0), Schedule.class));
+                                }
+
+
+                            } finally {
+                                latch.countDown();
+                                notifyListeners(calendars);
+                                if (cursor != null) {
+                                    cursor.close();
+                                }
                             }
-                            latch.countDown();
-                            notifyListeners(calendars);
 
                         }
                     } catch (RemoteException e) {
                         e.printStackTrace();
+                        exceptionRef.set(e);
                         latch.countDown();
                     }
                 }
@@ -232,16 +261,21 @@ public class ScheduleSynchronizer implements Synchronizer<Schedule> {
                 @Override
                 public void onFailure(Exception e) {
                     Log.e(TAG, e.getMessage(), e);
+                    exceptionRef.set(e);
                     latch.countDown();
                 }
             });
             try {
-                latch.await();
+                if (!latch.await(20, TimeUnit.SECONDS)) {
+                    throw new RuntimeException("Timeout");
+                }
             } catch (InterruptedException e) {
                 Log.e(TAG, e.getMessage(), e);
             }
         }
-
+        if (exceptionRef.get() != null) {
+            throw new RuntimeException("Timeout");
+        }
     }
 
     private void notifyListeners(final Collection<Schedule> data) {

@@ -71,20 +71,27 @@ public class TrackViewFragment extends DialogFragment {
                 String trackName = args.getString(ROOM_NAME);
 
                 if (schedule == null) {
-                    Cursor cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
+                    Cursor cursor = null;
+                    schedule = new ArrayList<ScheduleItem>(10);
+                    try {
+                        cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
 
-                    if (cursor.moveToNext()) {
-                        Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
-                        schedule = new ArrayList<ScheduleItem>(10);
-                        for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
-                            if (scheduleItem.room.name.equals(trackName)) {
-                                schedule.add(scheduleItem);
+                        if (cursor != null && cursor.moveToNext()) {
+                            Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
+                            for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
+                                if (scheduleItem.room.name.equals(trackName)) {
+                                    schedule.add(scheduleItem);
+                                }
                             }
+                        } else {
+                            //???
                         }
-                    } else {
-                        //???
-                    }
 
+                    } finally {
+                        if (cursor != null) {
+                            cursor.close();
+                        }
+                    }
                 }
 
                 return null;

@@ -1,5 +1,6 @@
 package org.devnexus.fragments;
 
+import android.accounts.Account;
 import android.app.Activity;
 import android.content.BroadcastReceiver;
 import android.content.ContentResolver;
@@ -23,7 +24,9 @@ import com.google.gson.Gson;
 import org.devnexus.DevnexusApplication;
 import org.devnexus.adapters.ScheduleAdapter;
 import org.devnexus.aerogear.SynchronizeEventListener;
+import org.devnexus.auth.DevNexusAuthenticator;
 import org.devnexus.sync.DevNexusSyncAdapter;
+import org.devnexus.util.AccountUtil;
 import org.devnexus.util.GsonUtils;
 import org.devnexus.util.SessionPickerReceiver;
 import org.devnexus.vo.Schedule;
@@ -68,6 +71,7 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
             adapter = new ScheduleAdapter(new Schedule(), new ArrayList<UserCalendar>(), activity.getApplicationContext());
         }
         resolver = getActivity().getContentResolver();
+
     }
 
     @Override
@@ -90,13 +94,20 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
             protected synchronized List<UserCalendar> doInBackground(Void... params) {
 
                 List<UserCalendar> toReturn = new ArrayList<UserCalendar>();
-                Cursor cursor = DevnexusApplication.CONTEXT.getContentResolver().query(UserCalendarContract.URI, null, null, null, null);
+                Cursor cursor = null;
+                try {
+                    cursor = DevnexusApplication.CONTEXT.getContentResolver().query(UserCalendarContract.URI, null, null, null, null);
 
-                while (cursor != null && cursor.moveToNext()) {
+                    while (cursor != null && cursor.moveToNext()) {
                     toReturn.add(GSON.fromJson(cursor.getString(0), UserCalendar.class));
                 }
 
                 return toReturn;
+                } finally {
+                    if (cursor != null) {
+                        cursor.close();
+                    }
+                }
             }
 
             @Override
@@ -157,7 +168,7 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
             }
         }
 
-        resolver.insert(UserCalendarContract.URI, UserCalendarContract.valueize(calendarItem));
+        new Updater(resolver, calendarItem).executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
 
     }
 
@@ -196,12 +207,19 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
             new AsyncTask<Void, Void, ArrayList<UserCalendar>>() {
                 @Override
                 protected ArrayList<UserCalendar> doInBackground(Void... params) {
-                    Cursor cursor = resolver.query(UserCalendarContract.URI, null, null, null, null);
-                    ArrayList<UserCalendar> calendar = new ArrayList<UserCalendar>(cursor.getCount());
-                    while (cursor.moveToNext()) {
-                        calendar.add(GSON.fromJson(cursor.getString(0), UserCalendar.class));
+                    Cursor cursor = null;
+                    try {
+                        cursor = resolver.query(UserCalendarContract.URI, null, null, null, null);
+                        ArrayList<UserCalendar> calendar = new ArrayList<UserCalendar>(cursor.getCount());
+                        while (cursor != null && cursor.moveToNext()) {
+                            calendar.add(GSON.fromJson(cursor.getString(0), UserCalendar.class));
                     }
                     return calendar;
+                    } finally {
+                        if (cursor != null) {
+                            cursor.close();
+                        }
+                    }
                 }
 
                 @Override
@@ -209,6 +227,31 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
                     dataUpdated(userCalendars);
                 }
             }.executeOnExecutor(DevnexusApplication.EXECUTORS);
+        }
+    }
+
+    private static class Updater extends AsyncTask<Void, Void, Void> {
+
+        private final ContentResolver resolver;
+        private final UserCalendar calendarItem;
+
+        private Updater(ContentResolver resolver, UserCalendar calendarItem) {
+            this.resolver = resolver;
+            this.calendarItem = calendarItem;
+        }
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            resolver.update(UserCalendarContract.URI, UserCalendarContract.valueize(calendarItem, true), null, new String[]{calendarItem.getId() + ""});
+            Bundle settingsBundle = new Bundle();
+
+            settingsBundle.putBoolean(
+                    ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
+
+
+            ContentResolver.requestSync(new Account(AccountUtil.getUsername(DevnexusApplication.CONTEXT), DevNexusAuthenticator.ACCOUNT_TYPE),
+                    "org.devnexus.sync", settingsBundle);
+            return null;
         }
     }
 

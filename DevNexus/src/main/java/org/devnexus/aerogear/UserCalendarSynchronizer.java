@@ -31,7 +31,6 @@ import com.google.gson.Gson;
 import org.devnexus.util.CountDownCallback;
 import org.devnexus.util.GsonUtils;
 import org.devnexus.vo.UserCalendar;
-import org.devnexus.vo.contract.SingleColumnJsonArrayList;
 import org.devnexus.vo.contract.UserCalendarContract;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.DataManager;
@@ -51,6 +50,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * This Synchronizer uses two SQL databases to manage local state
@@ -176,12 +176,19 @@ public class UserCalendarSynchronizer implements Synchronizer<UserCalendar> {
         ArrayList<UserCalendar> calendars = new ArrayList<UserCalendar>();
         synchronized (lock) {
             try {
-                Cursor var = provider.query(UserCalendarContract.URI, null, null, null, null);
-                if (var != null) {
-                    while (var.moveToNext()) {
-                        if (var.getString(0) != null) {
-                            calendars.add(GSON.fromJson(var.getString(0), UserCalendar.class));
+                Cursor cursor = null;
+                try {
+                    cursor = provider.query(UserCalendarContract.URI, null, null, null, null);
+                    if (cursor != null) {
+                        while (cursor != null && cursor.moveToNext()) {
+                            if (cursor.getString(0) != null) {
+                                calendars.add(GSON.fromJson(cursor.getString(0), UserCalendar.class));
+                            }
                         }
+                    }
+                } finally {
+                    if (cursor != null) {
+                        cursor.close();
                     }
                 }
             } catch (RemoteException e) {
@@ -193,9 +200,18 @@ public class UserCalendarSynchronizer implements Synchronizer<UserCalendar> {
             Sets.SetView<UserCalendar> localChanges = Sets.difference(localData, shadowData);
             //pipeConfig.getRequestBuilder().getBody(shadowData)
             for (UserCalendar change : localChanges) {
-                adapter.save(change, new LoggingCallback());
-                localShadowStore.remove((Serializable) property.getValue(change));
-                localShadowStore.save(change);
+                CountDownLatch latch = new CountDownLatch(1);
+                adapter.save(change, new CountDownCallback<UserCalendar>(latch));
+                try {
+                    if (!latch.await(60, TimeUnit.SECONDS)) {
+                        throw new RuntimeException("Timeout");
+                    }
+                    localShadowStore.remove((Serializable) property.getValue(change));
+                    localShadowStore.save(change);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+
             }
         }
 
@@ -205,6 +221,7 @@ public class UserCalendarSynchronizer implements Synchronizer<UserCalendar> {
     public void loadRemoteChanges(final ContentProviderClient provider) {
         final CountDownLatch latch = new CountDownLatch(1);
         final Gson gson = GSON;
+        final AtomicReference<Exception> exceptionRef = new AtomicReference<Exception>();
 
         synchronized (lock) {
             adapter.read(new Callback<List<UserCalendar>>() {
@@ -227,17 +244,26 @@ public class UserCalendarSynchronizer implements Synchronizer<UserCalendar> {
                             provider.update(UserCalendarContract.URI, value, "", new String[]{change.getId() + ""});
                         }
 
-                        SingleColumnJsonArrayList var = (SingleColumnJsonArrayList) provider.query(UserCalendarContract.URI, null, null, null, null);
+                        Cursor cursor = null;
                         ArrayList<UserCalendar> calendars = new ArrayList<UserCalendar>();
-                        while (var.moveToNext()) {
-                            calendars.add(GSON.fromJson(var.getString(0), UserCalendar.class));
-                        }
-                        latch.countDown();
-                        notifyListeners(calendars);
 
+                        try {
+                            cursor = provider.query(UserCalendarContract.URI, null, null, null, null);
+
+                            while (cursor != null && cursor.moveToNext()) {
+                                calendars.add(GSON.fromJson(cursor.getString(0), UserCalendar.class));
+                            }
+                        } finally {
+                            if (cursor != null) {
+                                cursor.close();
+                            }
+                            latch.countDown();
+                            notifyListeners(calendars);
+                        }
 
                     } catch (RemoteException e) {
                         e.printStackTrace();
+                        exceptionRef.set(e);
                         latch.countDown();
                     }
                 }
@@ -245,16 +271,22 @@ public class UserCalendarSynchronizer implements Synchronizer<UserCalendar> {
                 @Override
                 public void onFailure(Exception e) {
                     Log.e(TAG, e.getMessage(), e);
+                    exceptionRef.set(e);
                     latch.countDown();
                 }
             });
             try {
-                latch.await();
+                if (!latch.await(20, TimeUnit.SECONDS)) {
+                    throw new RuntimeException("Timeout");
+                }
             } catch (InterruptedException e) {
                 Log.e(TAG, e.getMessage(), e);
             }
-        }
 
+        }
+        if (exceptionRef.get() != null) {
+            throw new RuntimeException(exceptionRef.get());
+        }
     }
 
     private void notifyListeners(final Collection<UserCalendar> data) {

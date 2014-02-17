@@ -74,9 +74,19 @@ public class DevNexusContentProvider extends ContentProvider {
     @Override
     public int bulkInsert(final Uri uri, final ContentValues[] values) {
         if (uri.equals(UserCalendarContract.URI)) {
-            return execute(uri, values, "", null, new CalendarBulkInsert());
+            Integer res = execute(uri, values, "", null, new CalendarBulkInsert());
+            if (res == null) {
+                return 0;
+            } else {
+                return res;
+            }
         } else if (uri.equals(ScheduleContract.URI)) {
-            return execute(uri, values, "", null, new ScheduleBulkInsert());
+            Integer res = execute(uri, values, "", null, new ScheduleBulkInsert());
+            if (res == null) {
+                return 0;
+            } else {
+                return res;
+            }
         } else
             throw new IllegalArgumentException(String.format("%s not supported", uri.toString()));
 
@@ -84,32 +94,55 @@ public class DevNexusContentProvider extends ContentProvider {
 
     @Override
     public int delete(final Uri uri, final String selection, final String[] selectionArgs) {
+
+        Operation<Integer> op;
+
         if (uri.equals(UserCalendarContract.URI)) {
-            return execute(uri, null, selection, selectionArgs, new CalendarDelete());
+            op = new CalendarDelete();
         } else if (uri.equals(ScheduleContract.URI)) {
-            return execute(uri, null, selection, selectionArgs, new ScheduleDelete());
+            op = new ScheduleDelete();
         } else
             throw new IllegalArgumentException(String.format("%s not supported", uri.toString()));
+
+
+        Integer res = execute(uri, null, selection, selectionArgs, op);
+        if (res == null) {
+            res = 0;
+        }
+        return res;
 
     }
 
     @Override
     public int update(final Uri uri, final ContentValues values, final String selection, final String[] selectionArgs) {
+        Operation<Integer> op;
+        ContentValues[] vals;
         if (uri.equals(UserCalendarContract.URI)) {
             if (values == null) {
-                return execute(uri, new ContentValues[]{null}, selection, selectionArgs, new CalendarUpdate());
+                vals = new ContentValues[]{null};
+                op = new CalendarUpdate();
             } else {
-                return execute(uri, new ContentValues[]{values}, selection, selectionArgs, new CalendarUpdate());
+                vals = new ContentValues[]{values};
+                op = new CalendarUpdate();
             }
         } else if (uri.equals(ScheduleContract.URI)) {
             if (values == null) {
-                return execute(uri, new ContentValues[]{null}, selection, selectionArgs, new ScheduleUpdate());
+                vals = new ContentValues[]{null};
+                op = new ScheduleUpdate();
+
             } else {
-                return execute(uri, new ContentValues[]{values}, selection, selectionArgs, new ScheduleUpdate());
+                vals = new ContentValues[]{values};
+                op = new ScheduleUpdate();
+
             }
         } else
             throw new IllegalArgumentException(String.format("%s not supported", uri.toString()));
 
+        Integer res = execute(uri, vals, selection, selectionArgs, op);
+        if (res == null) {
+            res = 0;
+        }
+        return res;
 
     }
 
@@ -129,9 +162,9 @@ public class DevNexusContentProvider extends ContentProvider {
 
         final CountDownLatch latch = new CountDownLatch(1);
         synchronized (TAG) {
-            store.open(new Callback<SQLStore<UserCalendar>>() {
+            store.open(new Callback<SQLStore>() {
                 @Override
-                public void onSuccess(SQLStore<UserCalendar> userCalendarSQLStore) {
+                public void onSuccess(SQLStore userCalendarSQLStore) {
 
 
                     try {
@@ -163,7 +196,7 @@ public class DevNexusContentProvider extends ContentProvider {
             });
 
             try {
-                latch.await(2, TimeUnit.SECONDS);
+                latch.await(20, TimeUnit.SECONDS);
             } catch (InterruptedException e) {
                 Log.e(TAG, e.getMessage(), e);
                 //ignore?
@@ -228,6 +261,7 @@ public class DevNexusContentProvider extends ContentProvider {
                 Long id = Long.getLong(selectionArgs[0]);
                 calendarStore.remove(id);
             }
+
             UserCalendar calendar = gson.fromJson(values[0].getAsString(UserCalendarContract.DATA), UserCalendar.class);
             calendarStore.save(calendar);
             if (values[0].getAsBoolean(UserCalendarContract.NOTIFY) != null && values[0].getAsBoolean(UserCalendarContract.NOTIFY)) {
