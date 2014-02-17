@@ -2,6 +2,7 @@ package org.devnexus.fragments;
 
 import android.app.Activity;
 import android.app.Dialog;
+import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
@@ -12,14 +13,16 @@ import android.widget.AdapterView;
 import android.widget.ListView;
 
 import com.google.common.collect.Lists;
+import com.google.gson.Gson;
 
 import org.devnexus.DevnexusApplication;
 import org.devnexus.R;
 import org.devnexus.adapters.SessionAdapter;
-import org.devnexus.util.SessionPickerReceiver;
+import org.devnexus.util.GsonUtils;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.ScheduleItem;
 import org.devnexus.vo.UserCalendar;
+import org.devnexus.vo.contract.ScheduleContract;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -35,8 +38,8 @@ public class TrackViewFragment extends DialogFragment {
     private SessionAdapter adapter;
 
     private List<ScheduleItem> schedule;
-    private SessionPickerReceiver receiver;
     private ListView view;
+    private static final Gson GSON = GsonUtils.GSON;
 
     public static TrackViewFragment newInstance(String roomName) {
         Bundle args = new Bundle();
@@ -68,13 +71,20 @@ public class TrackViewFragment extends DialogFragment {
                 String trackName = args.getString(ROOM_NAME);
 
                 if (schedule == null) {
-                    Schedule scheduleFromDb = ((DevnexusApplication) activity.getApplication()).getSchedule();
-                    schedule = new ArrayList<ScheduleItem>(10);
-                    for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
-                        if (scheduleItem.room.name.equals(trackName)) {
-                            schedule.add(scheduleItem);
+                    Cursor cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
+
+                    if (cursor.moveToNext()) {
+                        Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
+                        schedule = new ArrayList<ScheduleItem>(10);
+                        for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
+                            if (scheduleItem.room.name.equals(trackName)) {
+                                schedule.add(scheduleItem);
+                            }
                         }
+                    } else {
+                        //???
                     }
+
                 }
 
                 return null;
@@ -93,7 +103,7 @@ public class TrackViewFragment extends DialogFragment {
                     view.refreshDrawableState();
                 }
             }
-        }.execute(null);
+        }.executeOnExecutor(DevnexusApplication.EXECUTORS);
 
     }
 

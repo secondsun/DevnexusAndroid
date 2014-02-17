@@ -129,7 +129,7 @@ public class CachingImageProvider {
                     callerBacker.onImageLoad(bitmap);
                 }
             }
-        }.execute();
+        }.executeOnExecutor(DevnexusApplication.EXECUTORS);
 
     }
 

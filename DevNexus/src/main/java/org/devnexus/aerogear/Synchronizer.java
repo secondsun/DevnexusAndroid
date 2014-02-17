@@ -16,6 +16,7 @@
  */
 package org.devnexus.aerogear;
 
+import android.content.ContentProviderClient;
 import android.content.Context;
 
 import org.jboss.aerogear.android.Callback;
@@ -58,20 +59,25 @@ public interface Synchronizer<T> {
 
     /**
      * Pulls down the remote data and synchronizes
+     *
+     * @param provider
      */
-    public void loadRemoteChanges();
+    public void loadRemoteChanges(ContentProviderClient provider);
 
     /**
      * Notify the synchronizer that local changes have been made and should be sent to the remote server for synchronization.
+     *
+     * @param provider
      */
-    public void sync();
+    public void sync(ContentProviderClient provider);
 
     /**
      * This method will load the remote data set and reset the local data to it.
      * This is useful for the initial data fetch.
      *
+     * @param provider
      * @param callback callback with the remote data
      */
-    public void resetToRemoteState(final Callback<List<T>> callback);
+    public void resetToRemoteState(ContentProviderClient provider, final Callback<List<T>> callback);
 
 }

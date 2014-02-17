@@ -1,6 +1,7 @@
 package org.devnexus.fragments;
 
 import android.app.Activity;
+import android.database.Cursor;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.util.Log;
@@ -10,13 +11,16 @@ import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
 
-import org.devnexus.DevnexusApplication;
+import com.google.gson.Gson;
+
 import org.devnexus.R;
 import org.devnexus.adapters.SessionAdapter;
+import org.devnexus.util.GsonUtils;
 import org.devnexus.util.SessionPickerReceiver;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.ScheduleItem;
 import org.devnexus.vo.UserCalendar;
+import org.devnexus.vo.contract.ScheduleContract;
 
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -43,6 +47,8 @@ public class SessionPickerFragment extends DialogFragment {
     private SessionPickerReceiver receiver;
     private Date time;
     private ListView view;
+
+    private static final Gson GSON = GsonUtils.GSON;
 
     public static SessionPickerFragment newInstance(UserCalendar calendarItem) {
         SessionPickerFragment fragment = new SessionPickerFragment();
@@ -80,17 +86,24 @@ public class SessionPickerFragment extends DialogFragment {
         }
 
         if (schedule == null) {
-            Schedule scheduleFromDb = ((DevnexusApplication) activity.getApplication()).getSchedule();
-            schedule = new ArrayList<ScheduleItem>(10);
-            for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
-                if (time == null) {
-                    Log.e(TAG, "time is null!!!");
+            Cursor cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
+
+            if (cursor.moveToNext()) {
+                Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
+                schedule = new ArrayList<ScheduleItem>(10);
+                for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
+                    if (time == null) {
+                        Log.e(TAG, "time is null!!!");
+                    }
+                    Log.e(TAG, format.format(scheduleItem.fromTime) + " vs " + format.format(time));
+                    if (scheduleItem.fromTime.equals(time)) {
+                        schedule.add(scheduleItem);
+                    }
                 }
-                Log.e(TAG, format.format(scheduleItem.fromTime) + " vs " + format.format(time));
-                if (scheduleItem.fromTime.equals(time)) {
-                    schedule.add(scheduleItem);
-                }
+            } else {
+                //???
             }
+
         }
 
 

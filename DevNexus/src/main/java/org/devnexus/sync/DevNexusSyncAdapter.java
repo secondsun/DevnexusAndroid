@@ -8,46 +8,38 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SyncResult;
 import android.os.Bundle;
+import android.os.RemoteException;
 import android.util.Log;
 
 import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializationContext;
-import com.google.gson.JsonSerializer;
 
 import org.apache.http.HttpStatus;
 import org.devnexus.aerogear.RestRunner;
+import org.devnexus.aerogear.ScheduleSynchronizer;
 import org.devnexus.aerogear.SynchronizeEventListener;
-import org.devnexus.aerogear.TwoWaySqlSynchronizer;
+import org.devnexus.aerogear.UserCalendarSynchronizer;
 import org.devnexus.auth.CookieAuthenticator;
-import org.devnexus.util.CountDownCallback;
+import org.devnexus.util.GsonUtils;
+import org.devnexus.util.StoreConfigProvider;
+import org.devnexus.util.VoidCallback;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.UserCalendar;
+import org.devnexus.vo.contract.SingleColumnJsonArrayList;
+import org.devnexus.vo.contract.UserCalendarContract;
 import org.jboss.aerogear.android.Callback;
-import org.jboss.aerogear.android.authentication.AuthenticationModule;
 import org.jboss.aerogear.android.http.HttpException;
-import org.jboss.aerogear.android.impl.datamanager.SQLStore;
 import org.jboss.aerogear.android.impl.datamanager.StoreConfig;
-import org.jboss.aerogear.android.impl.datamanager.StoreTypes;
 import org.jboss.aerogear.android.impl.pipeline.GsonResponseParser;
 import org.jboss.aerogear.android.impl.pipeline.PipeConfig;
 import org.jboss.aerogear.android.impl.util.UrlUtils;
 
-import java.lang.reflect.Type;
 import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Date;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Created by summers on 2/2/14.
@@ -62,32 +54,26 @@ public class DevNexusSyncAdapter extends AbstractThreadedSyncAdapter implements 
     public static final String SCHEDULE_SYNC_FINISH = "org.devnexus.sync.schedule_finished";
     public static final String SCHEDULE_DATA = "org.devnexus.sync.schedule_data";
     public static final String CALENDAR_DATA = "org.devnexus.sync.calendar_data";
-    public static final String EXCEPTION_DATA = "org.devnexus.sync.calendar_data";
-
+    public static final String EXCEPTION_DATA = "org.devnexus.sync.exception_data";
 
     private static final URL DEVNEXUS_URL;
-    private static final URI PUSH_URL;
-    private GsonBuilder builder = new GsonBuilder();
 
+
+    private static final Gson GSON = GsonUtils.GSON;
     private static final String TAG = DevNexusSyncAdapter.class.getSimpleName();
-    private final TwoWaySqlSynchronizer<UserCalendar> calendarSynchronizer;
-    private final TwoWaySqlSynchronizer<Schedule> scheduleSynchronizer;
+    private UserCalendarSynchronizer calendarSynchronizer;
+    private ScheduleSynchronizer scheduleSynchronizer;
+
 
     static {
         try {
             DEVNEXUS_URL = new URL("http://192.168.1.194:9090/s/");
-            PUSH_URL = new URI("http://192.168.1.194:8080/ag-push");
         } catch (MalformedURLException e) {
-            Log.e(TAG, e.getMessage(), e);
-            throw new RuntimeException(e);
-        } catch (URISyntaxException e) {
             Log.e(TAG, e.getMessage(), e);
             throw new RuntimeException(e);
         }
 
     }
-
-    private AuthenticationModule cookieAuth = new CookieAuthenticator();
 
 
     /**
@@ -120,94 +106,86 @@ public class DevNexusSyncAdapter extends AbstractThreadedSyncAdapter implements 
 
     }
 
-    {
 
+    @Override
+    public synchronized void onPerformSync(Account account, final Bundle extras, String authority, ContentProviderClient provider, final SyncResult syncResult) {
 
-        builder.registerTypeAdapter(Date.class, new JsonDeserializer() {
-            public Date deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-                return new Date(json.getAsJsonPrimitive().getAsLong());
-            }
-        });
+        final CountDownLatch scheduleLatch = new CountDownLatch(1);
+        final CountDownLatch calendarLatch = new CountDownLatch(1);
 
-        builder.registerTypeAdapter(Date.class, new JsonSerializer<Date>() {
-            @Override
-            public JsonElement serialize(Date src, Type typeOfSrc, JsonSerializationContext
-                    context) {
-                return src == null ? null : new JsonPrimitive(src.getTime());
-            }
-        });
+        StoreConfig userCalendarStoreConfig = StoreConfigProvider.getUserStoreConfig(getContext());
 
 
         PipeConfig schedulePipeConfig = new PipeConfig(DEVNEXUS_URL, Schedule.class);
         schedulePipeConfig.setEndpoint("schedule.json");
         schedulePipeConfig.setName("schedule");
-        schedulePipeConfig.setResponseParser(new GsonResponseParser(builder.create()));
+        schedulePipeConfig.setResponseParser(new GsonResponseParser(GSON));
         schedulePipeConfig.setHandler(new RestRunner(Schedule.class, UrlUtils.appendToBaseURL(schedulePipeConfig.getBaseURL(), schedulePipeConfig.getEndpoint()), schedulePipeConfig));
 
         PipeConfig userCalendarPipeConfig = new PipeConfig(DEVNEXUS_URL, UserCalendar.class);
         userCalendarPipeConfig.setName("calendar");
+        CookieAuthenticator cookieAuth = new CookieAuthenticator();
         userCalendarPipeConfig.setAuthModule(cookieAuth);
-        userCalendarPipeConfig.setResponseParser(new GsonResponseParser(builder.create()));
+        userCalendarPipeConfig.setResponseParser(new GsonResponseParser(GSON));
         userCalendarPipeConfig.setHandler(new RestRunner(UserCalendar.class, UrlUtils.appendToBaseURL(userCalendarPipeConfig.getBaseURL(), userCalendarPipeConfig.getEndpoint()), userCalendarPipeConfig));
 
 
-        StoreConfig scheduleItemStoreConfig = new StoreConfig();
-        scheduleItemStoreConfig.setType(StoreTypes.SQL);
-        scheduleItemStoreConfig.setKlass(Schedule.class);
-        scheduleItemStoreConfig.setBuilder(builder);
-        scheduleItemStoreConfig.setContext(getContext());
-
-        StoreConfig userCalendarStoreConfig = new StoreConfig();
-        userCalendarStoreConfig.setType(StoreTypes.SQL);
-        userCalendarStoreConfig.setKlass(UserCalendar.class);
-        userCalendarStoreConfig.setContext(getContext());
-        userCalendarStoreConfig.setBuilder(builder);
-
-
-        TwoWaySqlSynchronizer.TwoWaySqlSynchronizerConfig syncConfig = new TwoWaySqlSynchronizer.TwoWaySqlSynchronizerConfig(UserCalendar.class);
+        UserCalendarSynchronizer.TwoWaySqlSynchronizerConfig syncConfig = new UserCalendarSynchronizer.TwoWaySqlSynchronizerConfig(UserCalendar.class);
         syncConfig.setPipeConfig(userCalendarPipeConfig);
         syncConfig.setStoreConfig(userCalendarStoreConfig);
 
-        calendarSynchronizer = new TwoWaySqlSynchronizer<UserCalendar>(syncConfig);
+        calendarSynchronizer = new UserCalendarSynchronizer(syncConfig);
 
-        TwoWaySqlSynchronizer.TwoWaySqlSynchronizerConfig scheduleConfig = new TwoWaySqlSynchronizer.TwoWaySqlSynchronizerConfig(Schedule.class);
+
+        ScheduleSynchronizer.TwoWaySqlSynchronizerConfig scheduleConfig = new ScheduleSynchronizer.TwoWaySqlSynchronizerConfig(Schedule.class);
+        StoreConfig scheduleItemStoreConfig = StoreConfigProvider.getScheduleStoreConfig(getContext());
 
         scheduleConfig.setPipeConfig(schedulePipeConfig);
         scheduleConfig.setStoreConfig(scheduleItemStoreConfig);
+        scheduleSynchronizer = new ScheduleSynchronizer(scheduleConfig);
 
-        scheduleSynchronizer = new TwoWaySqlSynchronizer<Schedule>(scheduleConfig);
+        scheduleSynchronizer.beginSync(getContext(), VoidCallback.INSTANCE);
+        scheduleSynchronizer.resetToRemoteState(provider, new Callback<List<Schedule>>() {
+            @Override
+            public void onSuccess(List<Schedule> data) {
+                scheduleSynchronizer.syncNoMore(getContext(), null);
+                syncResult.stats.numUpdates = data.size();
+                scheduleLatch.countDown();
+            }
 
-        scheduleSynchronizer.addListener(this);
-        calendarSynchronizer.addListener(this);
+            @Override
+            public void onFailure(Exception e) {
+                scheduleSynchronizer.syncNoMore(getContext(), null);
+                scheduleLatch.countDown();
+                if (e instanceof HttpException) {
+                    HttpException httpException = (HttpException) e;
+                    if (httpException.getStatusCode() == HttpStatus.SC_UNAUTHORIZED || httpException.getStatusCode() == HttpStatus.SC_FORBIDDEN) {
+                        syncResult.stats.numAuthExceptions++;
+                    } else {
+                        syncResult.stats.numIoExceptions++;
+                    }
+                }
 
-        CountDownLatch latch = new CountDownLatch(2);
-        calendarSynchronizer.beginSync(getContext(), new CountDownCallback<Void>(latch));
-        scheduleSynchronizer.beginSync(getContext(), new CountDownCallback<Void>(latch));
-    }
+                sendScheduleSyncFinished(new ArrayList<Schedule>(1), e);
+            }
+        });
 
-    @Override
-    public void onPerformSync(Account account, final Bundle extras, String authority, ContentProviderClient provider, final SyncResult syncResult) {
-
-        final Gson gson = builder.create();
-
-        if (extras.getSerializable(CALENDAR_DATA) != null) {
-            UserCalendar calendarItem = gson.fromJson(extras.getString(CALENDAR_DATA), UserCalendar.class);
-            SQLStore<UserCalendar> calendarStore = calendarSynchronizer.getLocalStore();
-            calendarStore.remove(calendarItem.getId());
-            calendarStore.save(calendarItem);
-        }
-
-
+        calendarSynchronizer.beginSync(getContext(), VoidCallback.INSTANCE);
         if (syncResult.fullSyncRequested) {
-            calendarSynchronizer.resetToRemoteState(new Callback<List<UserCalendar>>() {
+
+            calendarSynchronizer.resetToRemoteState(provider, new Callback<List<UserCalendar>>() {
                 @Override
                 public void onSuccess(List<UserCalendar> data) {
+                    calendarSynchronizer.syncNoMore(getContext(), null);
                     syncResult.stats.numUpdates = data.size();
                     sendCalendarSyncFinished(data, null);
+                    calendarLatch.countDown();
                 }
 
                 @Override
                 public void onFailure(Exception e) {
+                    calendarSynchronizer.syncNoMore(getContext(), null);
+                    calendarLatch.countDown();
                     if (e instanceof HttpException) {
                         HttpException httpException = (HttpException) e;
                         if (httpException.getStatusCode() == HttpStatus.SC_UNAUTHORIZED || httpException.getStatusCode() == HttpStatus.SC_FORBIDDEN) {
@@ -221,33 +199,38 @@ public class DevNexusSyncAdapter extends AbstractThreadedSyncAdapter implements 
                 }
             });
         } else {
-            calendarSynchronizer.sync();
-            calendarSynchronizer.loadRemoteChanges();
-            syncResult.stats.numUpdates = 1;
-            Collection<UserCalendar> data = calendarSynchronizer.getLocalStore().readAll();
-            sendCalendarSyncFinished(data, null);
-        }
-        scheduleSynchronizer.resetToRemoteState(new Callback<List<Schedule>>() {
-            @Override
-            public void onSuccess(List<Schedule> data) {
-                Collection<Schedule> allData = scheduleSynchronizer.getLocalStore().readAll();
-                syncResult.stats.numUpdates = allData.size();
-                sendScheduleSyncFinished(allData, null);
+            try {
+                calendarSynchronizer.sync(provider);
+                calendarSynchronizer.loadRemoteChanges(provider);
+                syncResult.stats.numUpdates = 1;
+                SingleColumnJsonArrayList cursor = null;
+                try {
+                    cursor = (SingleColumnJsonArrayList) provider.query(UserCalendarContract.URI, null, null, null, null);
+                } catch (RemoteException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                    sendCalendarSyncFinished(new ArrayList<UserCalendar>(1), e);
+                }
+                ArrayList<UserCalendar> calendars = new ArrayList<UserCalendar>();
+                while (cursor.moveToNext()) {
+                    calendars.add(GSON.fromJson(cursor.getString(0), UserCalendar.class));
+                }
+                Collection<UserCalendar> data = calendars;
+                sendCalendarSyncFinished(data, null);
+            } finally {
+                calendarSynchronizer.syncNoMore(getContext(), null);
+                calendarLatch.countDown();
             }
 
-            @Override
-            public void onFailure(Exception e) {
-                if (e instanceof HttpException) {
-                    HttpException httpException = (HttpException) e;
-                    if (httpException.getStatusCode() == HttpStatus.SC_UNAUTHORIZED || httpException.getStatusCode() == HttpStatus.SC_FORBIDDEN) {
-                        syncResult.stats.numAuthExceptions++;
-                    } else {
-                        syncResult.stats.numIoExceptions++;
-                    }
-                    sendScheduleSyncFinished(new ArrayList<Schedule>(1), e);
-                }
-            }
-        });
+        }
+
+
+        try {
+            scheduleLatch.await(20, TimeUnit.SECONDS);
+            calendarLatch.await(20, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
     }
 
 

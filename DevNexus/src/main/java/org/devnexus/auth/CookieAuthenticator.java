@@ -136,8 +136,12 @@ public class CookieAuthenticator extends AbstractAuthenticationModule {
 
         }
         Account account = accounts[0];
+
+        cookie = am.peekAuthToken(account, "DevNexus");
+
         am.invalidateAuthToken(account.type, cookie);
         AccountManagerFuture<Bundle> tokenFuture = am.getAuthToken(account, "DevNexus", null, null, null, null);
+
         Bundle tokenBundle;
 
         try {

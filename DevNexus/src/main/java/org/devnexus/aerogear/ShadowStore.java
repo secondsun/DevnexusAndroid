@@ -32,6 +32,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
 
+import org.devnexus.DevnexusApplication;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.ReadFilter;
 import org.jboss.aerogear.android.datamanager.IdGenerator;
@@ -55,7 +56,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * This class is the same as SQLStore except it appends 'shadow_' to the table name.
  * <p/>
- * It is used by the TwoWaySqlSynchronizer and will be removed once we fix JIRA AGDROID-175
+ * It is used by the UserCalendarSynchronizer and will be removed once we fix JIRA AGDROID-175
  */
 public class ShadowStore<T> extends SQLiteOpenHelper implements Store<T> {
 
@@ -356,7 +357,7 @@ public class ShadowStore<T> extends SQLiteOpenHelper implements Store<T> {
                     onReady.onSuccess(ShadowStore.this);
                 }
             }
-        }.execute();
+        }.executeOnExecutor(DevnexusApplication.EXECUTORS);
     }
 
     @Override

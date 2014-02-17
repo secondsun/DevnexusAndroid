@@ -9,7 +9,7 @@ import org.devnexus.sync.DevNexusSyncAdapter;
 /**
  * This Service will setup sync and open databases when the application is first started.
  */
-public class StartupService extends Service {
+public class SyncAdapterService extends Service {
     // Storage for an instance of the sync adapter
     private static DevNexusSyncAdapter sSyncAdapter = null;
     // Object to use as a thread-safe lock

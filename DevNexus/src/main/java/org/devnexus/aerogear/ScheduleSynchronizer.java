@@ -16,18 +16,24 @@
  */
 package org.devnexus.aerogear;
 
+import android.content.ContentProviderClient;
+import android.content.ContentValues;
 import android.content.Context;
 import android.os.Handler;
 import android.os.Looper;
+import android.os.RemoteException;
 import android.util.Log;
 
 import com.google.common.collect.Sets;
+import com.google.gson.Gson;
 
 import org.devnexus.util.CountDownCallback;
+import org.devnexus.util.GsonUtils;
+import org.devnexus.vo.Schedule;
+import org.devnexus.vo.contract.ScheduleContract;
+import org.devnexus.vo.contract.SingleColumnJsonArrayList;
 import org.jboss.aerogear.android.Callback;
-import org.jboss.aerogear.android.DataManager;
 import org.jboss.aerogear.android.Pipeline;
-import org.jboss.aerogear.android.impl.datamanager.SQLStore;
 import org.jboss.aerogear.android.impl.datamanager.StoreConfig;
 import org.jboss.aerogear.android.impl.pipeline.PipeConfig;
 import org.jboss.aerogear.android.impl.reflection.Property;
@@ -46,17 +52,16 @@ import java.util.concurrent.TimeUnit;
 /**
  * This Synchronizer uses two SQL databases to manage local state
  */
-public class TwoWaySqlSynchronizer<T> implements Synchronizer<T> {
+public class ScheduleSynchronizer implements Synchronizer<Schedule> {
 
     private final Object lock = new Object();
-    private static final String TAG = TwoWaySqlSynchronizer.class.getSimpleName();
+    private static final String TAG = ScheduleSynchronizer.class.getSimpleName();
     private final PipeConfig pipeConfig;
-    private final Pipe<T> adapter;
+    private final Pipe<Schedule> adapter;
     private final StoreConfig storeConfig;
-    private final SQLStore<T> localStore;
-    private final ShadowStore<T> localShadowStore;
-    private final DataManager manager = new DataManager();
+    private final ShadowStore<Schedule> localShadowStore;
 
+    private static final Gson GSON = GsonUtils.GSON;
     private final Handler handler = new Handler(Looper.getMainLooper());
 
     private final Pipeline pipeline;
@@ -64,16 +69,15 @@ public class TwoWaySqlSynchronizer<T> implements Synchronizer<T> {
     private final String recordIdFieldName;
     private final Property property;
 
-    final List<SynchronizeEventListener<T>> listeners = new ArrayList<SynchronizeEventListener<T>>();
+    final List<SynchronizeEventListener<Schedule>> listeners = new ArrayList<SynchronizeEventListener<Schedule>>();
 
-    public TwoWaySqlSynchronizer(TwoWaySqlSynchronizerConfig config) {
+    public ScheduleSynchronizer(TwoWaySqlSynchronizerConfig config) {
         storeConfig = config.getStoreConfig();
         pipeConfig = config.getPipeConfig();
 
         pipeline = new Pipeline(config.getPipeConfig().getBaseURL());
 
-        localStore = (SQLStore<T>) manager.store("local", storeConfig);
-        localShadowStore = new ShadowStore<T>(storeConfig.getKlass(), storeConfig.getContext(), storeConfig.getBuilder(), storeConfig.getIdGenerator());
+        localShadowStore = new ShadowStore<Schedule>(storeConfig.getKlass(), storeConfig.getContext(), storeConfig.getBuilder(), storeConfig.getIdGenerator());
         adapter = pipeline.pipe(config.klass, pipeConfig);
 
         recordIdFieldName = Scan.recordIdFieldNameIn(config.klass);
@@ -81,12 +85,12 @@ public class TwoWaySqlSynchronizer<T> implements Synchronizer<T> {
     }
 
     @Override
-    public void addListener(SynchronizeEventListener<T> listener) {
+    public void addListener(SynchronizeEventListener<Schedule> listener) {
         listeners.add(listener);
     }
 
     @Override
-    public void removeListener(SynchronizeEventListener<T> listener) {
+    public void removeListener(SynchronizeEventListener<Schedule> listener) {
         listeners.remove(listener);
     }
 
@@ -96,8 +100,7 @@ public class TwoWaySqlSynchronizer<T> implements Synchronizer<T> {
         CountDownLatch latch = new CountDownLatch(2);
 
         try {
-            localShadowStore.open(new CountDownCallback<ShadowStore<T>>(latch));
-            localStore.open(new CountDownCallback(latch));
+            localShadowStore.open(new CountDownCallback<ShadowStore<Schedule>>(latch));
             latch.await(1000, TimeUnit.MILLISECONDS);
             syncBegunCallback.onSuccess(null);
         } catch (Exception e) {
@@ -107,8 +110,7 @@ public class TwoWaySqlSynchronizer<T> implements Synchronizer<T> {
     }
 
     @Override
-    public void syncNoMore(Context appContext, Callback<T> syncFinishedCallback) {
-        localStore.close();
+    public void syncNoMore(Context appContext, Callback<Schedule> syncFinishedCallback) {
         localShadowStore.close();
     }
 
@@ -117,19 +119,38 @@ public class TwoWaySqlSynchronizer<T> implements Synchronizer<T> {
      * This is useful for the initial data fetch.
      */
     @Override
-    public void resetToRemoteState(final Callback<List<T>> callback) {
+    public void resetToRemoteState(final ContentProviderClient provider, final Callback<List<Schedule>> callback) {
 
-        adapter.read(new Callback<List<T>>() {
+        final Gson gson = GSON;
+
+        adapter.read(new Callback<List<Schedule>>() {
             @Override
-            public void onSuccess(List<T> data) {
+            public void onSuccess(List<Schedule> data) {
                 localShadowStore.reset();
-                localStore.reset();
-
-                for (T item : data) {
-                    localStore.save(item);
-                    localShadowStore.save(item);
+                try {
+                    provider.delete(ScheduleContract.URI, null, null);
+                } catch (RemoteException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                    callback.onFailure(e);
+                    return;
                 }
 
+                ContentValues[] values = new ContentValues[data.size()];
+                for (int i = 0; i < data.size(); i++) {
+                    Schedule item = data.get(i);
+                    ContentValues value = new ContentValues();
+                    value.put(ScheduleContract.DATA, gson.toJson(item));
+                    values[i] = value;
+
+                    localShadowStore.save(item);
+                }
+                try {
+                    provider.bulkInsert(ScheduleContract.URI, values);
+                } catch (RemoteException e) {
+                    Log.e(TAG, e.getMessage(), e);
+                    callback.onFailure(e);
+                    return;
+                }
                 notifyListeners(data);
                 callback.onSuccess(data);
             }
@@ -144,15 +165,27 @@ public class TwoWaySqlSynchronizer<T> implements Synchronizer<T> {
 
     /**
      * This method will sync a local object with a remote object.
+     *
+     * @param provider
      */
-    public void sync() {
+    public void sync(ContentProviderClient provider) {
+        ArrayList<Schedule> calendars = new ArrayList<Schedule>();
         synchronized (lock) {
-            Set<T> localData = new HashSet<T>(localStore.readAll());
-            Set<T> shadowData = new HashSet<T>(localShadowStore.readAll());
-            Sets.SetView<T> localChanges = Sets.difference(localData, shadowData);
+            try {
+                SingleColumnJsonArrayList var = (SingleColumnJsonArrayList) provider.query(ScheduleContract.URI, null, null, null, null);
+                while (var.moveToNext()) {
+                    calendars.add(GSON.fromJson(var.getString(0), Schedule.class));
+                }
+            } catch (RemoteException e) {
+                Log.e(TAG, e.getMessage(), e);
+                throw new RuntimeException(e);
+            }
+            Set<Schedule> localData = new HashSet<Schedule>(calendars);
+            Set<Schedule> shadowData = new HashSet<Schedule>(localShadowStore.readAll());
+            Sets.SetView<Schedule> localChanges = Sets.difference(localData, shadowData);
             //pipeConfig.getRequestBuilder().getBody(shadowData)
-            for (T change : localChanges) {
-                adapter.save(change, new LoggingCallback<T>());
+            for (Schedule change : localChanges) {
+                adapter.save(change, new LoggingCallback());
                 localShadowStore.remove((Serializable) property.getValue(change));
                 localShadowStore.save(change);
             }
@@ -161,31 +194,44 @@ public class TwoWaySqlSynchronizer<T> implements Synchronizer<T> {
     }
 
     @Override
-    public void loadRemoteChanges() {
+    public void loadRemoteChanges(final ContentProviderClient provider) {
         final CountDownLatch latch = new CountDownLatch(1);
+
+
         synchronized (lock) {
-            adapter.read(new Callback<List<T>>() {
+            adapter.read(new Callback<List<Schedule>>() {
                 @Override
-                public void onSuccess(List<T> data) {
+                public void onSuccess(List<Schedule> data) {
                     try {
-                        Set<T> localData = new HashSet<T>(data);
-                        Set<T> shadowData = new HashSet<T>(localShadowStore.readAll());
-                        Sets.SetView<T> localChanges = Sets.difference(localData, shadowData);
-                        for (T change : localChanges) {
+                        Set<Schedule> localData = new HashSet<Schedule>(data);
+                        Set<Schedule> shadowData = new HashSet<Schedule>(localShadowStore.readAll());
+                        Sets.SetView<Schedule> localChanges = Sets.difference(localData, shadowData);
+                        for (Schedule change : localChanges) {
                             localShadowStore.remove((Serializable) property.getValue(change));
                             localShadowStore.save(change);
-                            localStore.remove((Serializable) property.getValue(change));
-                            localStore.save(change);
+
+                            ContentValues values = new ContentValues();
+                            values.put(ScheduleContract.DATA, GSON.toJson(change));
+                            provider.update(ScheduleContract.URI, values, "", new String[]{change.getId() + ""});
+
+                            SingleColumnJsonArrayList var = (SingleColumnJsonArrayList) provider.query(ScheduleContract.URI, null, null, null, null);
+                            ArrayList<Schedule> calendars = new ArrayList<Schedule>();
+                            while (var.moveToNext()) {
+                                calendars.add(GSON.fromJson(var.getString(0), Schedule.class));
+                            }
+                            latch.countDown();
+                            notifyListeners(calendars);
 
                         }
-                    } finally {
+                    } catch (RemoteException e) {
+                        e.printStackTrace();
                         latch.countDown();
-                        notifyListeners(localStore.readAll());
                     }
                 }
 
                 @Override
                 public void onFailure(Exception e) {
+                    Log.e(TAG, e.getMessage(), e);
                     latch.countDown();
                 }
             });
@@ -198,13 +244,13 @@ public class TwoWaySqlSynchronizer<T> implements Synchronizer<T> {
 
     }
 
-    private void notifyListeners(final Collection<T> data) {
+    private void notifyListeners(final Collection<Schedule> data) {
 
         handler.post(new Runnable() {
 
             @Override
             public void run() {
-                for (SynchronizeEventListener<T> listener : listeners) {
+                for (SynchronizeEventListener<Schedule> listener : listeners) {
                     listener.dataUpdated(data);
                 }
             }
@@ -212,9 +258,6 @@ public class TwoWaySqlSynchronizer<T> implements Synchronizer<T> {
 
     }
 
-    public SQLStore<T> getLocalStore() {
-        return localStore;
-    }
 
     public static class TwoWaySqlSynchronizerConfig {
 
@@ -244,10 +287,10 @@ public class TwoWaySqlSynchronizer<T> implements Synchronizer<T> {
 
     }
 
-    private static class LoggingCallback<T> implements Callback<T> {
+    private static class LoggingCallback implements Callback<Schedule> {
 
         @Override
-        public void onSuccess(T data) {
+        public void onSuccess(Schedule data) {
             Log.d("LoggingCallback", "Succesfully saved:" + data);
         }
 

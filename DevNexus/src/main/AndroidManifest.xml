@@ -91,7 +91,7 @@
             android:label="@string/title_activity_google_connect"></activity>
 
         <service
-            android:name="org.devnexus.service.StartupService"
+            android:name=".service.SyncAdapterService"
             android:enabled="true"
             android:exported="true">
             <intent-filter>
@@ -112,7 +112,7 @@
         </service>
 
         <provider
-            android:name=".sync.DevNexusStubContentProvider"
+            android:name=".sync.DevNexusContentProvider"
             android:authorities="org.devnexus.sync"
             android:exported="false"
             android:syncable="true" />
