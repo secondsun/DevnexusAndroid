@@ -2,6 +2,7 @@ package org.devnexus.fragments;
 
 import android.app.Activity;
 import android.database.Cursor;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
 import android.util.Log;
@@ -10,6 +11,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 
 import com.google.gson.Gson;
 
@@ -46,9 +48,11 @@ public class SessionPickerFragment extends DialogFragment {
     private List<ScheduleItem> schedule;
     private SessionPickerReceiver receiver;
     private Date time;
-    private ListView view;
+    private ListView listView;
+    private ProgressBar progress;
 
     private static final Gson GSON = GsonUtils.GSON;
+    private LoaderTask loaderTask = null;
 
     public static SessionPickerFragment newInstance(UserCalendar calendarItem) {
         SessionPickerFragment fragment = new SessionPickerFragment();
@@ -66,6 +70,7 @@ public class SessionPickerFragment extends DialogFragment {
         if (savedInstanceState != null && savedInstanceState.get(SCHEDULE) != null) {
             schedule = (List<ScheduleItem>) savedInstanceState.get(SCHEDULE);
         }
+
     }
 
     public void setReceiver(SessionPickerReceiver receiver) {
@@ -85,54 +90,35 @@ public class SessionPickerFragment extends DialogFragment {
             adapter = new SessionAdapter(activity.getApplicationContext(), R.layout.schedule_list_item);
         }
 
-        if (schedule == null) {
-            Cursor cursor = null;
-            try {
-                cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
-                schedule = new ArrayList<ScheduleItem>(10);
-                if (cursor != null && cursor.moveToNext()) {
-                    Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
-                    for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
-                        if (time == null) {
-                            Log.e(TAG, "time is null!!!");
-                        }
-                        Log.e(TAG, format.format(scheduleItem.fromTime) + " vs " + format.format(time));
-                        if (scheduleItem.fromTime.equals(time)) {
-                            schedule.add(scheduleItem);
-                        }
-                    }
-                } else {
-                    //???
-                }
-            } finally {
-                if (cursor != null) {
-                    cursor.close();
-                }
-            }
 
-        }
-
-
-        adapter.clear();
-        for (ScheduleItem item : schedule) {
-            adapter.add(item);
-        }
-
-        adapter.notifyDataSetChanged();
-        if (view != null) {
-            view.requestLayout();
-            view.refreshDrawableState();
+        if (listView != null) {
+            listView.requestLayout();
+            listView.refreshDrawableState();
         }
 
     }
 
+    @Override
+    public void onResume() {
+        super.onResume();
+        loaderTask = new LoaderTask();
+        loaderTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        loaderTask.cancel(true);
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        view = new ListView(inflater.getContext());
-        view.setAdapter(adapter);
+        View view = inflater.inflate(R.layout.session_picker, null);
+        progress = (ProgressBar) view.findViewById(R.id.progress);
+        listView = (ListView) view.findViewById(R.id.listView);
+        listView.setAdapter(adapter);
 
-        view.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 receiver.receiveSessionItem(calendarItem, adapter.getItem(position));
@@ -143,5 +129,55 @@ public class SessionPickerFragment extends DialogFragment {
         return view;
     }
 
+    private class LoaderTask extends AsyncTask<Void, Void, Void> {
+
+        @Override
+        protected Void doInBackground(Void... params) {
+            if (schedule == null) {
+                Cursor cursor = null;
+                try {
+                    cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
+                    schedule = new ArrayList<ScheduleItem>(10);
+                    if (cursor != null && cursor.moveToNext()) {
+                        Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
+                        for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
+                            if (time == null) {
+                                Log.e(TAG, "time is null!!!");
+                            }
+                            Log.e(TAG, format.format(scheduleItem.fromTime) + " vs " + format.format(time));
+                            if (scheduleItem.fromTime.equals(time)) {
+                                schedule.add(scheduleItem);
+                            }
+                        }
+                    } else {
+                        //???
+                    }
+                } finally {
+                    if (cursor != null) {
+                        cursor.close();
+                    }
+                }
+
+            }
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Void aVoid) {
+            if (!isCancelled()) {
+                adapter.clear();
+                for (ScheduleItem item : schedule) {
+                    adapter.add(item);
+                }
+
+                adapter.notifyDataSetChanged();
+                if (listView != null) {
+                    progress.setVisibility(View.GONE);
+                    listView.getParent().requestLayout();
+                    listView.refreshDrawableState();
+                }
+            }
+        }
+    }
 
 }

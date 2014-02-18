@@ -16,7 +16,6 @@ import org.devnexus.vo.UserCalendar;
 import org.devnexus.vo.contract.ScheduleContract;
 import org.devnexus.vo.contract.SingleColumnJsonArrayList;
 import org.devnexus.vo.contract.UserCalendarContract;
-import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.impl.datamanager.DefaultIdGenerator;
 import org.jboss.aerogear.android.impl.datamanager.SQLStore;
 
@@ -37,23 +36,20 @@ public class DevNexusContentProvider extends ContentProvider {
     private static ContentResolver resolver;
     private SQLStore<UserCalendar> calendarSQLStore;
     private SQLStore<Schedule> scheduleSQLStore;
+    private final CountDownLatch createdLatch = new CountDownLatch(2);
+
+    private static ArrayList<Schedule> schedule = null;
 
     @Override
     public boolean onCreate() {
         resolver = getContext().getContentResolver();
-        CountDownLatch latch = new CountDownLatch(2);
+
 
         calendarSQLStore = new SQLStore<UserCalendar>(UserCalendar.class, getContext(), GsonUtils.builder(), new DefaultIdGenerator());
-        calendarSQLStore.open(new CountDownCallback<SQLStore<UserCalendar>>(latch));
+        calendarSQLStore.open(new CountDownCallback<SQLStore<UserCalendar>>(createdLatch));
         scheduleSQLStore = new SQLStore<Schedule>(Schedule.class, getContext(), GsonUtils.builder(), new DefaultIdGenerator());
-        scheduleSQLStore.open(new CountDownCallback<SQLStore<Schedule>>(latch));
+        scheduleSQLStore.open(new CountDownCallback<SQLStore<Schedule>>(createdLatch));
 
-        try {
-            latch.await(20, TimeUnit.SECONDS);
-        } catch (InterruptedException e) {
-            Log.e(TAG, e.getMessage(), e);
-            //ignore?
-        }
         return true;
     }
 
@@ -165,6 +161,12 @@ public class DevNexusContentProvider extends ContentProvider {
     private <T> T execute(final Uri uri, final ContentValues[] values, final String selection, final String[] selectionArgs, final Operation<T> op) {
         final AtomicReference<T> returnRef = new AtomicReference<T>();
 
+        try {
+            createdLatch.await(20, TimeUnit.SECONDS);//make sure the databases were created.
+        } catch (InterruptedException e) {
+            Log.e(TAG, e.getMessage(), e);
+        }
+
         SQLStore tempStore;
         if (uri.equals(UserCalendarContract.URI)) {
             tempStore = calendarSQLStore;
@@ -236,7 +238,7 @@ public class DevNexusContentProvider extends ContentProvider {
             if (selectionArgs == null || selectionArgs[0] == null) {
                 calendarStore.reset();
             } else {
-                Long id = Long.getLong(selectionArgs[0]);
+                Long id = Long.parseLong(selectionArgs[0]);
                 calendarStore.remove(id);
             }
 
@@ -262,7 +264,10 @@ public class DevNexusContentProvider extends ContentProvider {
 
         @Override
         public SingleColumnJsonArrayList exec(Gson gson, SQLStore scheduleStore, Uri uri, ContentValues[] values, String selection, String[] selectionArgs) {
-            return new SingleColumnJsonArrayList(new ArrayList<UserCalendar>(scheduleStore.readAll()));
+            if (DevNexusContentProvider.schedule == null) {
+                DevNexusContentProvider.schedule = new ArrayList<Schedule>(scheduleStore.readAll());
+            }
+            return new SingleColumnJsonArrayList(new ArrayList<Schedule>(DevNexusContentProvider.schedule));
         }
     }
 
@@ -278,6 +283,8 @@ public class DevNexusContentProvider extends ContentProvider {
             }
             Schedule schedule = gson.fromJson(values[0].getAsString(ScheduleContract.DATA), Schedule.class);
             scheduleStore.save(schedule);
+            DevNexusContentProvider.schedule = null;
+            DevNexusContentProvider.schedule = null;
             if (values[0].getAsBoolean(ScheduleContract.NOTIFY) != null && values[0].getAsBoolean(ScheduleContract.NOTIFY)) {
                 resolver.notifyChange(ScheduleContract.URI, null);
             }
@@ -291,6 +298,7 @@ public class DevNexusContentProvider extends ContentProvider {
         public Uri exec(Gson gson, SQLStore scheduleStore, Uri uri, ContentValues[] values, String selection, String[] selectionArgs) {
             Schedule calendar = gson.fromJson(values[0].getAsString(ScheduleContract.DATA), Schedule.class);
             scheduleStore.save(calendar);
+            DevNexusContentProvider.schedule = null;
             if (values[0].getAsBoolean(ScheduleContract.NOTIFY) != null && values[0].getAsBoolean(ScheduleContract.NOTIFY)) {
                 resolver.notifyChange(ScheduleContract.URI, null);
             }
@@ -306,6 +314,7 @@ public class DevNexusContentProvider extends ContentProvider {
                 Schedule calendar = gson.fromJson(value.getAsString(ScheduleContract.DATA), Schedule.class);
                 scheduleStore.save(calendar);
             }
+            DevNexusContentProvider.schedule = null;
             resolver.notifyChange(ScheduleContract.URI, null);
             return values.length;
         }
@@ -323,7 +332,7 @@ public class DevNexusContentProvider extends ContentProvider {
                 Long id = Long.getLong(selectionArgs[0]);
                 scheduleStore.remove(id);
             }
-
+            DevNexusContentProvider.schedule = null;
             resolver.notifyChange(ScheduleContract.URI, null);
             return 1;
         }
