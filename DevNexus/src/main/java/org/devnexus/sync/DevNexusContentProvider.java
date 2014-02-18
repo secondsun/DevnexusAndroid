@@ -9,6 +9,7 @@ import android.util.Log;
 
 import com.google.gson.Gson;
 
+import org.devnexus.util.CountDownCallback;
 import org.devnexus.util.GsonUtils;
 import org.devnexus.vo.Schedule;
 import org.devnexus.vo.UserCalendar;
@@ -34,10 +35,25 @@ public class DevNexusContentProvider extends ContentProvider {
     private static final Gson GSON = GsonUtils.GSON;
 
     private static ContentResolver resolver;
+    private SQLStore<UserCalendar> calendarSQLStore;
+    private SQLStore<Schedule> scheduleSQLStore;
 
     @Override
     public boolean onCreate() {
         resolver = getContext().getContentResolver();
+        CountDownLatch latch = new CountDownLatch(2);
+
+        calendarSQLStore = new SQLStore<UserCalendar>(UserCalendar.class, getContext(), GsonUtils.builder(), new DefaultIdGenerator());
+        calendarSQLStore.open(new CountDownCallback<SQLStore<UserCalendar>>(latch));
+        scheduleSQLStore = new SQLStore<Schedule>(Schedule.class, getContext(), GsonUtils.builder(), new DefaultIdGenerator());
+        scheduleSQLStore.open(new CountDownCallback<SQLStore<Schedule>>(latch));
+
+        try {
+            latch.await(20, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Log.e(TAG, e.getMessage(), e);
+            //ignore?
+        }
         return true;
     }
 
@@ -151,56 +167,18 @@ public class DevNexusContentProvider extends ContentProvider {
 
         SQLStore tempStore;
         if (uri.equals(UserCalendarContract.URI)) {
-            tempStore = new SQLStore<UserCalendar>(UserCalendar.class, getContext(), GsonUtils.builder(), new DefaultIdGenerator());
+            tempStore = calendarSQLStore;
         } else if (uri.equals(ScheduleContract.URI)) {
-            tempStore = new SQLStore<Schedule>(Schedule.class, getContext(), GsonUtils.builder(), new DefaultIdGenerator());
+            tempStore = scheduleSQLStore;
         } else {
             throw new IllegalArgumentException(String.format("%s not supported", uri.toString()));
         }
 
         final SQLStore store = tempStore;
 
-        final CountDownLatch latch = new CountDownLatch(1);
+
         synchronized (TAG) {
-            store.open(new Callback<SQLStore>() {
-                @Override
-                public void onSuccess(SQLStore userCalendarSQLStore) {
-
-
-                    try {
-                        returnRef.set(op.exec(GSON, store, uri, values, selection, selectionArgs));
-                    } finally {
-                        try {
-                            store.close();
-                        } catch (Exception e) {
-                            Log.e(TAG, e.getMessage(), e);
-                        } finally {
-                            latch.countDown();
-                        }
-                    }
-
-
-                }
-
-                @Override
-                public void onFailure(Exception e) {
-                    Log.e(TAG, e.getMessage(), e);
-                    try {
-                        store.close();
-                    } catch (Exception ignore) {
-                        Log.e(TAG, e.getMessage(), e);
-
-                    }
-                    latch.countDown();
-                }
-            });
-
-            try {
-                latch.await(20, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Log.e(TAG, e.getMessage(), e);
-                //ignore?
-            }
+            returnRef.set(op.exec(GSON, store, uri, values, selection, selectionArgs));
         }
         return returnRef.get();
     }

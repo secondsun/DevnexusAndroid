@@ -13,6 +13,7 @@ import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.v4.app.Fragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -242,7 +243,15 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
 
         @Override
         protected Void doInBackground(Void... params) {
-            resolver.update(UserCalendarContract.URI, UserCalendarContract.valueize(calendarItem, true), null, new String[]{calendarItem.getId() + ""});
+            resolver.update(UserCalendarContract.URI, UserCalendarContract.valueize(calendarItem, false), null, new String[]{calendarItem.getId() + ""});
+            Cursor cursor = resolver.query(UserCalendarContract.URI, null, null, null, null);
+            while (cursor!= null &&cursor.moveToNext()) {
+                UserCalendar cal = GSON.fromJson(cursor.getString(0), UserCalendar.class);
+                if (cal.getId().equals(calendarItem.getId())) {
+                    Log.d("CALENDAR_FROM_DB", GSON.toJson(cal));
+                    Log.d("CALENDAR_SAVED", GSON.toJson(calendarItem));
+                }
+            }
             Bundle settingsBundle = new Bundle();
 
             settingsBundle.putBoolean(
