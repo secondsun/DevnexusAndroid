@@ -13,6 +13,7 @@ import android.view.ViewGroup;
 import android.widget.AbsListView;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
@@ -25,7 +26,7 @@ public class MainActivity extends ActionBarActivity implements
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
-    private static final String[] NAVIGATION = new String[]{"Schedule", "Map", "Social"};
+    private static final String[] NAVIGATION = new String[]{"Schedule", "Map"};
 
     private ListView drawerList;
     private DrawerLayout drawerLayout;
@@ -72,7 +73,17 @@ public class MainActivity extends ActionBarActivity implements
                 if (convertView == null) {
                     convertView = getLayoutInflater().inflate(R.layout.navigation_drawer_item, null);
                 }
-
+                ImageView icon = (ImageView) convertView.findViewById(R.id.icon);
+                switch (position) {
+                    case 0:
+                        icon.setImageResource(android.R.drawable.ic_menu_my_calendar);
+                        break;
+                    case 1:
+                        icon.setImageResource(android.R.drawable.ic_menu_mapmode);
+                        break;
+                    case 2:
+                        break;
+                }
                 ((TextView) convertView.findViewById(R.id.name)).setText(getItem(position));
 
                 return convertView;
@@ -157,9 +168,6 @@ public class MainActivity extends ActionBarActivity implements
         } else if (fragmentManager.getFragments().get(0) instanceof ScheduleFragment && position == 0) {
             drawerLayout.closeDrawer(drawerList);
             return;
-        } else if (fragmentManager.getFragments().get(0) instanceof CountDownFragment && position == 2) {
-            drawerLayout.closeDrawer(drawerList);
-            return;
         }
 
         Fragment fragment = getItem(position);
@@ -187,8 +195,6 @@ public class MainActivity extends ActionBarActivity implements
                 return new ScheduleFragment();
             case 1:
                 return new GalleriaMapFragment();
-            case 2:
-                return new CountDownFragment();
         }
         return null;
     }
