@@ -115,15 +115,14 @@ public class DevnexusApplication extends Application {
 
         // Pass the settings flags by inserting them in a bundle
         Bundle settingsBundle = new Bundle();
-        settingsBundle.putBoolean(
-                ContentResolver.SYNC_EXTRAS_MANUAL, true);
+
         settingsBundle.putBoolean(
                 ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
 
 
         ContentResolver.requestSync(new Account(AccountUtil.getUsername(DevnexusApplication.CONTEXT), DevNexusAuthenticator.ACCOUNT_TYPE),
                 "org.devnexus.sync", settingsBundle);
-
+        Log.e("STARTUP_SYNC", "A sync from Startup was requested");
         registerForPush(AccountUtil.getUsername(getApplicationContext()));
 
     }

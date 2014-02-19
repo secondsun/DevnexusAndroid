@@ -196,7 +196,7 @@ public class DevNexusContentProvider extends ContentProvider {
             UserCalendar calendar = gson.fromJson(values[0].getAsString(UserCalendarContract.DATA), UserCalendar.class);
             calendarStore.save(calendar);
             if (values[0].getAsBoolean(ScheduleContract.NOTIFY) != null && values[0].getAsBoolean(ScheduleContract.NOTIFY)) {
-                resolver.notifyChange(UserCalendarContract.URI, null);
+                resolver.notifyChange(UserCalendarContract.URI, null, false);
             }
             return UserCalendarContract.URI;
         }
@@ -210,7 +210,7 @@ public class DevNexusContentProvider extends ContentProvider {
                 UserCalendar calendar = gson.fromJson(value.getAsString(UserCalendarContract.DATA), UserCalendar.class);
                 calendarStore.save(calendar);
             }
-            resolver.notifyChange(UserCalendarContract.URI, null);
+            resolver.notifyChange(UserCalendarContract.URI, null, false);
             return values.length;
         }
     }
@@ -226,7 +226,7 @@ public class DevNexusContentProvider extends ContentProvider {
                 Long id = Long.getLong(selectionArgs[0]);
                 calendarStore.remove(id);
             }
-            resolver.notifyChange(UserCalendarContract.URI, null);
+            resolver.notifyChange(UserCalendarContract.URI, null, false);
             return 1;
         }
     }
@@ -245,7 +245,7 @@ public class DevNexusContentProvider extends ContentProvider {
             UserCalendar calendar = gson.fromJson(values[0].getAsString(UserCalendarContract.DATA), UserCalendar.class);
             calendarStore.save(calendar);
             if (values[0].getAsBoolean(UserCalendarContract.NOTIFY) != null && values[0].getAsBoolean(UserCalendarContract.NOTIFY)) {
-                resolver.notifyChange(UserCalendarContract.URI, null);
+                resolver.notifyChange(UserCalendarContract.URI, null, false);
             }
             return 1;
         }
@@ -286,7 +286,7 @@ public class DevNexusContentProvider extends ContentProvider {
             DevNexusContentProvider.schedule = null;
             DevNexusContentProvider.schedule = null;
             if (values[0].getAsBoolean(ScheduleContract.NOTIFY) != null && values[0].getAsBoolean(ScheduleContract.NOTIFY)) {
-                resolver.notifyChange(ScheduleContract.URI, null);
+                resolver.notifyChange(ScheduleContract.URI, null, false);
             }
             return 1;
         }
@@ -300,7 +300,7 @@ public class DevNexusContentProvider extends ContentProvider {
             scheduleStore.save(calendar);
             DevNexusContentProvider.schedule = null;
             if (values[0].getAsBoolean(ScheduleContract.NOTIFY) != null && values[0].getAsBoolean(ScheduleContract.NOTIFY)) {
-                resolver.notifyChange(ScheduleContract.URI, null);
+                resolver.notifyChange(ScheduleContract.URI, null, false);
             }
             return ScheduleContract.URI;
         }
@@ -315,7 +315,7 @@ public class DevNexusContentProvider extends ContentProvider {
                 scheduleStore.save(calendar);
             }
             DevNexusContentProvider.schedule = null;
-            resolver.notifyChange(ScheduleContract.URI, null);
+            resolver.notifyChange(ScheduleContract.URI, null, false);
             return values.length;
         }
     }
@@ -333,7 +333,7 @@ public class DevNexusContentProvider extends ContentProvider {
                 scheduleStore.remove(id);
             }
             DevNexusContentProvider.schedule = null;
-            resolver.notifyChange(ScheduleContract.URI, null);
+            resolver.notifyChange(ScheduleContract.URI, null, false);
             return 1;
         }
     }

@@ -84,12 +84,11 @@ public class AeroGearGCMSyncMessageReceiver extends BroadcastReceiver {
             if (intent.hasExtra(syncMessageKey)) {
 
                 Bundle settingsBundle = new Bundle();
-                settingsBundle.putBoolean(
-                        ContentResolver.SYNC_EXTRAS_MANUAL, true);
+
                 settingsBundle.putBoolean(
                         ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
 
-
+                Log.e("SYNC_GCM", "A sync from GCM was requested");
                 ContentResolver.requestSync(getAccount(), "org.devnexus.sync", settingsBundle);
             }
 

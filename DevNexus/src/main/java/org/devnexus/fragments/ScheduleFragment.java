@@ -257,7 +257,7 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
             settingsBundle.putBoolean(
                     ContentResolver.SYNC_EXTRAS_EXPEDITED, true);
 
-
+            Log.e("UPDATED_SYNC", "A sync from Changing data");
             ContentResolver.requestSync(new Account(AccountUtil.getUsername(DevnexusApplication.CONTEXT), DevNexusAuthenticator.ACCOUNT_TYPE),
                     "org.devnexus.sync", settingsBundle);
             return null;

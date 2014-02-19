@@ -95,7 +95,7 @@ public class CachingImageProvider {
                                 output.write(data, 0, count);
                             }
                         } catch (Exception e) {
-                            throw new RuntimeException(e);
+                            return null;
                         } finally {
                             try {
                                 if (output != null)
@@ -110,14 +110,14 @@ public class CachingImageProvider {
                         }
 
                     } catch (Exception e) {
-                        throw new RuntimeException(e);
+                        return null;
                     }
 
 
                     try {
                         return BitmapFactory.decodeFile(imageFile.getCanonicalPath());
                     } catch (IOException e) {
-                        throw new RuntimeException(e);
+                        return null;
                     }
                 }
             }
@@ -126,7 +126,8 @@ public class CachingImageProvider {
             protected void onPostExecute(Bitmap bitmap) {
                 super.onPostExecute(bitmap);
                 if (!isCancelled()) {
-                    callerBacker.onImageLoad(bitmap);
+                    if (bitmap != null)
+                        callerBacker.onImageLoad(bitmap);
                 }
             }
         }.executeOnExecutor(DevnexusApplication.EXECUTORS);

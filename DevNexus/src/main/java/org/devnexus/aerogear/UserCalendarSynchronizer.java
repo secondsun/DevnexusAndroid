@@ -196,11 +196,9 @@ public class UserCalendarSynchronizer implements Synchronizer<UserCalendar> {
                 throw new RuntimeException(e);
             }
             Set<UserCalendar> localData = new HashSet<UserCalendar>(calendars);
-            Log.e("CHANGES", new String(pipeConfig.getRequestBuilder().getBody(localData)));
             Set<UserCalendar> shadowData = new HashSet<UserCalendar>(localShadowStore.readAll());
-            Log.e("CHANGES", new String(pipeConfig.getRequestBuilder().getBody(shadowData)));
             Sets.SetView<UserCalendar> localChanges = Sets.difference(localData, shadowData);
-            Log.e("CHANGES", new String(pipeConfig.getRequestBuilder().getBody(localChanges)));
+            Log.d("CHANGES", new String(pipeConfig.getRequestBuilder().getBody(localChanges)));
             //pipeConfig.getRequestBuilder().getBody(shadowData)
             for (UserCalendar change : localChanges) {
                 CountDownLatch latch = new CountDownLatch(1);

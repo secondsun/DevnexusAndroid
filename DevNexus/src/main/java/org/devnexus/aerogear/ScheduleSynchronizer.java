@@ -141,6 +141,7 @@ public class ScheduleSynchronizer implements Synchronizer<Schedule> {
                     Schedule item = data.get(i);
                     ContentValues value = new ContentValues();
                     value.put(ScheduleContract.DATA, gson.toJson(item));
+                    value.put(ScheduleContract.NOTIFY, Boolean.TRUE);
                     values[i] = value;
 
                     localShadowStore.save(item);
@@ -230,6 +231,7 @@ public class ScheduleSynchronizer implements Synchronizer<Schedule> {
 
                             ContentValues values = new ContentValues();
                             values.put(ScheduleContract.DATA, GSON.toJson(change));
+                            values.put(ScheduleContract.NOTIFY, Boolean.TRUE);
                             provider.update(ScheduleContract.URI, values, "", new String[]{change.getId() + ""});
 
                             Cursor cursor = null;
