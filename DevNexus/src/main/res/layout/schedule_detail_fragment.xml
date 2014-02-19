@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ScrollView
+    android:layout_height="wrap_content"
+    android:layout_width="match_parent"
+    xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+        android:orientation="vertical"
+        android:layout_margin="15dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+
+        <RelativeLayout
+            android:id="@+id/schedule_detail_header"
+            android:background="@color/dn_green"
+            android:padding="15dp"
+            android:layout_marginBottom="10dp"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/session_title"
+                android:layout_width="wrap_content"
+                android:background="@android:color/transparent"
+                android:layout_height="wrap_content"
+                android:textStyle="bold"
+                android:textSize="16dp"
+                android:text="" />
+
+
+            <TextView
+                android:id="@+id/session_subtitle"
+                android:background="@android:color/transparent"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_below="@id/session_title"
+                android:textSize="8dp"
+                android:text="" />
+
+        </RelativeLayout>
+
+        <TextView
+            android:id="@+id/session_description"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="" />
+
+        <Button
+            android:id="@+id/add_to_schedule_button"
+            android:layout_width="match_parent"
+            android:background="@color/dn_white"
+            android:text="Add to Schedule"
+            android:layout_height="wrap_content" />
+
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <ImageView
+                android:id="@+id/speaker_img"
+                android:layout_marginRight="15dp"
+                android:layout_alignParentTop="true"
+                android:layout_alignParentLeft="true"
+                android:layout_width="100dp"
+                android:layout_height="133dp"
+                android:layout_gravity="center"
+                android:src="@drawable/speaker" />
+
+            <TextView
+                android:id="@+id/speaker_name"
+                android:layout_alignParentTop="true"
+                android:layout_toRightOf="@+id/speaker_img"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="Jeremy Deane " />
+
+            <TextView
+                android:id="@+id/speaker_bio"
+                android:padding="15dp"
+                android:layout_below="@+id/speaker_name"
+                android:layout_toRightOf="@+id/speaker_img"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="" />
+
+        </RelativeLayout>
+
+
+    </LinearLayout>
+
+</ScrollView>

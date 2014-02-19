@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content">
+
+    <TextView
+        android:id="@+id/start_time"
+        android:layout_width="77dp"
+        android:layout_height="64dp"
+        android:minHeight="64dp"
+        android:textColor="@android:color/white"
+        android:text="7:00 AM"
+        android:paddingLeft="10dp"
+        android:paddingTop="10dp"
+        android:background="@color/track_1"
+
+        />
+
+    <TextView
+        android:id="@+id/session_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@+id/start_time"
+        android:text="Session Title"
+        android:textColor="@android:color/white"
+        android:layout_alignParentRight="true"
+        android:layout_alignTop="@id/start_time"
+        android:textSize="18sp"
+        android:padding="10dp" />
+
+    <TextView
+        android:id="@+id/session_room"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_toRightOf="@+id/start_time"
+        android:layout_below="@+id/session_title"
+        android:text="Session Room"
+        android:textColor="@android:color/white"
+        android:layout_alignParentRight="true"
+        android:textSize="10sp"
+        android:paddingLeft="10dp" />
+
+</RelativeLayout>
