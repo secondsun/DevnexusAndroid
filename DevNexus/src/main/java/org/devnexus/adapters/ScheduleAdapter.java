@@ -19,6 +19,7 @@ import org.devnexus.vo.UserCalendar;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
 import java.util.List;
@@ -95,12 +96,20 @@ public class ScheduleAdapter extends BaseAdapter {
 
     public void update(List<UserCalendar> calendar) {
         Log.d(TAG, "Updating new data:" + calendar.size());
-
-
         this.calendar = new ArrayList<UserCalendar>(calendar);
+
         Collections.sort(this.calendar);
-        dayOne = schedule.scheduleItemList.days.get(0);
-        dayTwo = schedule.scheduleItemList.days.get(1);
+        Calendar tempDayOne = Calendar.getInstance();
+        tempDayOne.setTime(this.calendar.get(0).fromTime);
+        zero(tempDayOne);
+
+        Calendar tempDayTwo = Calendar.getInstance();
+        tempDayTwo.setTime(this.calendar.get(this.calendar.size() - 1).fromTime);
+        zero(tempDayTwo);
+
+
+        dayOne = tempDayOne.getTime();
+        dayTwo = tempDayTwo.getTime();
         dayOneSize = 0;
         for (UserCalendar item : calendar) {
             if (item.fromTime.after(dayTwo)) {
@@ -116,6 +125,13 @@ public class ScheduleAdapter extends BaseAdapter {
                 ScheduleAdapter.super.notifyDataSetChanged();
             }
         });
+    }
+
+    private void zero(Calendar calendar) {
+        calendar.set(Calendar.HOUR_OF_DAY, 0);
+        calendar.set(Calendar.MINUTE, 0);
+        calendar.set(Calendar.SECOND, 0);
+        calendar.set(Calendar.MILLISECOND, 0);
     }
 
     @Override
@@ -187,7 +203,13 @@ public class ScheduleAdapter extends BaseAdapter {
                 } else {
                     holder.date.setBackgroundResource(R.color.dn_blue);
                     holder.title.setText("Available");
+                    holder.roomName.setText("");
                 }
+                holder.title.setSelected(true);
+                convertView.invalidate();
+                convertView.requestLayout();
+                convertView.refreshDrawableState();
+
                 return convertView;
         }
         return null;

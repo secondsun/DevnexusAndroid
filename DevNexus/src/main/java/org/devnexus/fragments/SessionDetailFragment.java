@@ -1,5 +1,6 @@
 package org.devnexus.fragments;
 
+import android.app.Activity;
 import android.app.Dialog;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
@@ -58,6 +59,13 @@ public class SessionDetailFragment extends DialogFragment implements CachingImag
     private SessionPickerReceiver receiver;
     private AsyncTask<Void, Void, Bitmap> imageLoader;
 
+    @Override
+    public void onAttach(Activity activity) {
+        super.onAttach(activity);
+        if (activity instanceof SessionPickerReceiver) {
+            receiver = (SessionPickerReceiver) activity;
+        }
+    }
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
@@ -65,7 +73,7 @@ public class SessionDetailFragment extends DialogFragment implements CachingImag
         scheduleItem = (ScheduleItem) getArguments().getSerializable(SCHEDULE_ITEM);
         view = inflater.inflate(R.layout.schedule_detail_fragment, null);
 
-        if (calendarSlot == null || calendarSlot.fixed) {
+        if (calendarSlot == null || calendarSlot.fixed || receiver == null) {
             hide(R.id.add_to_schedule_button);
         } else {
 

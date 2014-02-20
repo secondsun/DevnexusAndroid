@@ -12,6 +12,7 @@ import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -50,6 +51,7 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
     private ScheduleAdapter adapter;
     private ListView view;
     private final Observer observer = new Observer(new Handler());
+    private DialogFragment dialog;
 
     private DevnexusApplication application;
 
@@ -61,6 +63,7 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
 
     public ScheduleFragment() {
         receiver = new Receiver();
+        setRetainInstance(true);
     }
 
     @Override
@@ -69,7 +72,7 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
 
         application = (DevnexusApplication) activity.getApplication();
         if (adapter == null) {
-            adapter = new ScheduleAdapter(new Schedule(), new ArrayList<UserCalendar>(), activity.getApplicationContext());
+            adapter = new ScheduleAdapter(new Schedule(), calendar, activity.getApplicationContext());
         }
         resolver = getActivity().getContentResolver();
 
@@ -119,7 +122,9 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
             }
         };
 
-        calendarLoaderTask.executeOnExecutor(DevnexusApplication.EXECUTORS);
+        if (calendar == null || calendar.size() < 3) {
+            calendarLoaderTask.executeOnExecutor(DevnexusApplication.EXECUTORS);
+        }
     }
 
     @Override
@@ -127,6 +132,10 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
         super.onPause();
         getActivity().unregisterReceiver(receiver);
         calendarLoaderTask.cancel(false);
+        if (dialog != null) {
+            dialog.dismiss();
+            dialog = null;
+        }
     }
 
     @Override
@@ -144,10 +153,12 @@ public class ScheduleFragment extends Fragment implements SessionPickerReceiver,
                         SessionDetailFragment sessionDetailFragment = SessionDetailFragment.newInstance(item, item.item);
                         sessionDetailFragment.setReceiver(ScheduleFragment.this);
                         sessionDetailFragment.show(getActivity().getSupportFragmentManager(), TAG);
+                        dialog = sessionDetailFragment;
                     } else {
                         SessionPickerFragment sessionPicker = SessionPickerFragment.newInstance(item);
                         sessionPicker.setReceiver(ScheduleFragment.this);
                         sessionPicker.show(getActivity().getSupportFragmentManager(), TAG);
+                        dialog = sessionPicker;
                     }
                 }
             }

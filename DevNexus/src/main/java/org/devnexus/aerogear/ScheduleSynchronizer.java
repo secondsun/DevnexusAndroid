@@ -98,7 +98,7 @@ public class ScheduleSynchronizer implements Synchronizer<Schedule> {
     @Override
     public synchronized void beginSync(Context appContext, Callback<Void> syncBegunCallback) {
 
-        CountDownLatch latch = new CountDownLatch(2);
+        CountDownLatch latch = new CountDownLatch(1);
 
         try {
             localShadowStore.open(new CountDownCallback<ShadowStore<Schedule>>(latch));

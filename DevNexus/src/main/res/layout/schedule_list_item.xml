@@ -8,7 +8,9 @@
     <TextView
         android:id="@+id/start_time"
         android:layout_width="77dp"
-        android:layout_height="64dp"
+        android:layout_height="match_parent"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentBottom="true"
         android:minHeight="64dp"
         android:textColor="@android:color/white"
         android:text="7:00 AM"
@@ -20,13 +22,17 @@
 
     <TextView
         android:id="@+id/session_title"
-        android:layout_width="wrap_content"
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_toRightOf="@+id/start_time"
-        android:text="Session Title"
+        android:layout_marginLeft="77dp"
+        android:text=""
+        android:maxLines="1"
+        android:ellipsize="marquee"
+        android:scrollHorizontally="true"
+        android:paddingRight="10dp"
         android:textColor="@android:color/white"
         android:layout_alignParentRight="true"
-        android:layout_alignTop="@id/start_time"
+        android:layout_alignParentTop="true"
         android:textSize="18sp"
         android:padding="10dp" />
 
@@ -34,7 +40,7 @@
         android:id="@+id/session_room"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_toRightOf="@+id/start_time"
+        android:layout_alignLeft="@+id/session_title"
         android:layout_below="@+id/session_title"
         android:text="Session Room"
         android:textColor="@android:color/white"

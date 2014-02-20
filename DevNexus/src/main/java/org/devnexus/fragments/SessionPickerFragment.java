@@ -45,7 +45,7 @@ public class SessionPickerFragment extends DialogFragment {
     private static final String TAG = SessionPickerFragment.class.getSimpleName();
     private SessionAdapter adapter;
     private UserCalendar calendarItem;
-    private List<ScheduleItem> schedule;
+    private static List<ScheduleItem> schedule;
     private SessionPickerReceiver receiver;
     private Date time;
     private ListView listView;
@@ -96,13 +96,32 @@ public class SessionPickerFragment extends DialogFragment {
             listView.refreshDrawableState();
         }
 
+        if (activity instanceof SessionPickerReceiver) {
+            this.receiver = (SessionPickerReceiver) activity;
+        }
+
     }
 
     @Override
     public void onResume() {
         super.onResume();
         loaderTask = new LoaderTask();
-        loaderTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        if (schedule != null) {
+            adapter.clear();
+            for (ScheduleItem item : schedule) {
+                adapter.add(item);
+            }
+
+            adapter.notifyDataSetChanged();
+            if (listView != null) {
+                progress.setVisibility(View.GONE);
+                listView.getParent().requestLayout();
+                listView.refreshDrawableState();
+            }
+        } else {
+            loaderTask.executeOnExecutor(AsyncTask.THREAD_POOL_EXECUTOR);
+        }
+
     }
 
     @Override
@@ -121,8 +140,10 @@ public class SessionPickerFragment extends DialogFragment {
         listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-                receiver.receiveSessionItem(calendarItem, adapter.getItem(position));
+                if (receiver != null) {
+                    receiver.receiveSessionItem(calendarItem, adapter.getItem(position));
                 dismiss();
+                }
             }
         });
 
@@ -133,11 +154,11 @@ public class SessionPickerFragment extends DialogFragment {
 
         @Override
         protected Void doInBackground(Void... params) {
-            if (schedule == null) {
-                Cursor cursor = null;
+
+            Cursor cursor = null;
                 try {
                     cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
-                    schedule = new ArrayList<ScheduleItem>(10);
+                    ArrayList schedule = new ArrayList<ScheduleItem>(10);
                     if (cursor != null && cursor.moveToNext()) {
                         Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
                         for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
@@ -152,13 +173,15 @@ public class SessionPickerFragment extends DialogFragment {
                     } else {
                         //???
                     }
+                    SessionPickerFragment.schedule = schedule;
+
                 } finally {
                     if (cursor != null) {
                         cursor.close();
                     }
                 }
 
-            }
+
             return null;
         }
 
