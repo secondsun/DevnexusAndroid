@@ -2,7 +2,9 @@ package org.devnexus.fragments;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
+import android.view.InflateException;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -40,29 +42,37 @@ public class GalleriaMapFragment extends Fragment implements
     private static final LatLng ROOM_103 = new LatLng(toDec(33, 53.067, 0), toDec(-84, 27.975, 0));
     private static final LatLng ROOM_104 = new LatLng(toDec(33, 53.065, 0), toDec(-84, 27.982, 0));
     private static final LatLng ROOM_105 = new LatLng(toDec(33, 53.063, 0), toDec(-84, 27.988, 0));
+    private static final LatLng ROOM_113 = new LatLng(toDec(33, 53.058, 0), toDec(-84, 28.995, 0));
+
 
     // Initial camera position
     private static final LatLng CAMERA_GALLERIA = new LatLng(33.88346, -84.46695);
     private static final float CAMERA_ZOOM = 17.75f;
     private static final String TAG = GalleriaMapFragment.class.getSimpleName();
     private GoogleMap mMap;
-    private View view;
+    private static View view;
 
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        if (view == null) {
-            view = inflater.inflate(R.layout.galleria_map_fragment, null);
-            setupMap(true);
+        if (view != null) {
+            ViewGroup parent = (ViewGroup) view.getParent();
+            if (parent != null)
+                parent.removeView(view);
         }
+        try {
+            view = inflater.inflate(R.layout.galleria_map_fragment, container, false);
+
+        } catch (InflateException e) {
+        /* map is already there, just return view as it is */
+        }
+        setupMap(true);
         return view;
     }
 
     private void setupMap(boolean resetCamera) {
 
-        if (mMap == null) {
-            mMap = ((SupportMapFragment) getFragmentManager().findFragmentById(R.id.map)).getMap();
-        }
+        mMap = ((SupportMapFragment) getFragmentManager().findFragmentById(R.id.map)).getMap();
 
         mMap.setInfoWindowAdapter(new GoogleMap.InfoWindowAdapter() {
             @Override
@@ -98,6 +108,7 @@ public class GalleriaMapFragment extends Fragment implements
         mMap.addMarker(new MarkerOptions().position(ROOM_103).title("Room 103"));
         mMap.addMarker(new MarkerOptions().position(ROOM_104).title("Room 104"));
         mMap.addMarker(new MarkerOptions().position(ROOM_105).title("Room 105"));
+        mMap.addMarker(new MarkerOptions().position(ROOM_113).title("Room 113"));
 
 
         mMap.setOnMarkerClickListener(this);
@@ -143,10 +154,10 @@ public class GalleriaMapFragment extends Fragment implements
 
     public void onDestroyView() {
         super.onDestroyView();
-//        Fragment fragment = (getFragmentManager().findFragmentById(R.id.map));
-//        FragmentTransaction ft = getActivity().getSupportFragmentManager().beginTransaction();
-//        ft.remove(fragment);
-//        ft.commit();
+        Fragment fragment = (getFragmentManager().findFragmentById(R.id.map));
+        FragmentTransaction ft = getActivity().getSupportFragmentManager().beginTransaction();
+        ft.remove(fragment);
+        ft.commit();
     }
 
 }

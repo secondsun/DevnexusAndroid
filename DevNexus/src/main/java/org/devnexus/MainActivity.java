@@ -17,7 +17,7 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import org.devnexus.fragments.CountDownFragment;
+import org.devnexus.fragments.AboutFragment;
 import org.devnexus.fragments.GalleriaMapFragment;
 import org.devnexus.fragments.ScheduleFragment;
 
@@ -26,7 +26,7 @@ public class MainActivity extends ActionBarActivity implements
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
-    private static final String[] NAVIGATION = new String[]{"Schedule", "Map"};
+    private static final String[] NAVIGATION = new String[]{"Schedule", "Map", "About"};
 
     private ListView drawerList;
     private DrawerLayout drawerLayout;
@@ -82,6 +82,7 @@ public class MainActivity extends ActionBarActivity implements
                         icon.setImageResource(android.R.drawable.ic_menu_mapmode);
                         break;
                     case 2:
+                        icon.setImageResource(android.R.drawable.ic_menu_info_details);
                         break;
                 }
                 ((TextView) convertView.findViewById(R.id.name)).setText(getItem(position));
@@ -168,6 +169,9 @@ public class MainActivity extends ActionBarActivity implements
         } else if (fragmentManager.getFragments().get(0) instanceof ScheduleFragment && position == 0) {
             drawerLayout.closeDrawer(drawerList);
             return;
+        } else if (fragmentManager.getFragments().get(0) instanceof AboutFragment && position == 2) {
+            drawerLayout.closeDrawer(drawerList);
+            return;
         }
 
         Fragment fragment = getItem(position);
@@ -195,6 +199,8 @@ public class MainActivity extends ActionBarActivity implements
                 return new ScheduleFragment();
             case 1:
                 return new GalleriaMapFragment();
+            case 2:
+                return new AboutFragment();
         }
         return null;
     }

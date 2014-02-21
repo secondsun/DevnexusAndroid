@@ -15,6 +15,7 @@ public enum RoomName {
     ROOM_103("Room 103", "track_5"),
     ROOM_104("Room 104", "track_6"),
     ROOM_105("Room 105", "track_7"),
+    ROOM_113("Room 113", "track_11"),
     JOCKS_AND_JILLS("Jocks and Jills", "track_1");
 
     public final String roomName;

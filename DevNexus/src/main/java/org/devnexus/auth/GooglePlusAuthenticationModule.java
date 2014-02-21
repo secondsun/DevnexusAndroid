@@ -9,6 +9,7 @@ import com.google.android.gms.auth.UserRecoverableAuthException;
 
 import org.devnexus.DevnexusApplication;
 import org.devnexus.util.AccountUtil;
+import org.devnexus.util.Constants;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.Provider;
 import org.jboss.aerogear.android.authentication.AbstractAuthenticationModule;
@@ -96,7 +97,7 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
 
                     final String accessToken = GoogleAuthUtil.getToken(appContext,
                             authMap.get(ACCOUNT_NAME),
-                            "audience:server:client_id:402595014005-cairesrhrd0p75jg62i8vdk4qteca2c4.apps.googleusercontent.com",
+                            Constants.GOOGLE_PLUS_SERVER_SCOPE,
                             null);
 
 
@@ -159,7 +160,7 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
 
             final String accessToken = GoogleAuthUtil.getToken(appContext,
                     accountName,
-                    "audience:server:client_id:402595014005-cairesrhrd0p75jg62i8vdk4qteca2c4.apps.googleusercontent.com",
+                    Constants.GOOGLE_PLUS_SERVER_SCOPE,
                     null);
 
 

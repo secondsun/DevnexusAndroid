@@ -19,6 +19,7 @@ import org.devnexus.aerogear.ScheduleSynchronizer;
 import org.devnexus.aerogear.SynchronizeEventListener;
 import org.devnexus.aerogear.UserCalendarSynchronizer;
 import org.devnexus.auth.CookieAuthenticator;
+import org.devnexus.util.Constants;
 import org.devnexus.util.GsonUtils;
 import org.devnexus.util.StoreConfigProvider;
 import org.devnexus.util.VoidCallback;
@@ -67,7 +68,7 @@ public class DevNexusSyncAdapter extends AbstractThreadedSyncAdapter implements 
 
     static {
         try {
-            DEVNEXUS_URL = new URL("http://192.168.1.194:9090/s/");
+            DEVNEXUS_URL = new URL(Constants.DEVNEXUS_URL);
         } catch (MalformedURLException e) {
             Log.e(TAG, e.getMessage(), e);
             throw new RuntimeException(e);

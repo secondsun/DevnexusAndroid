@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <ScrollView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:orientation="vertical"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="This application uses software and assets from the following projects.  The maintainers may be reached at info@ajug.org. All code is available at https://github.com/secondsun/DevnexusAndroid." />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_margin="10dp"
+                android:background="@color/dn_white" />
+
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:src="@drawable/aerogear_logo"
+                android:layout_margin="10dp"
+                android:scaleType="centerInside" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="The AeroGear project is licensed under the Apache License, Version 2.0 and can be found at http://github.com/aerogear/aerogear-android" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_margin="10dp"
+                android:background="@color/dn_white" />
+
+            <ImageView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_margin="10dp"
+                android:src="@drawable/speaker"
+                android:scaleType="centerInside" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="The speaker asset is licensed under the Creative Commons Attribution 3.0 Unported license.  Original source is : http://commons.wikimedia.org/wiki/File:Businessman_silhouette_%28podium%29.svg" />
+
+
+        </LinearLayout>
+
+    </ScrollView>
+</LinearLayout>

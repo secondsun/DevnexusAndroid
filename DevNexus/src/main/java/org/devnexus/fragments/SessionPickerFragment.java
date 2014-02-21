@@ -1,6 +1,7 @@
 package org.devnexus.fragments;
 
 import android.app.Activity;
+import android.app.Dialog;
 import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
@@ -73,6 +74,13 @@ public class SessionPickerFragment extends DialogFragment {
 
     }
 
+    @Override
+    public Dialog onCreateDialog(Bundle savedInstanceState) {
+        Dialog dialog = super.onCreateDialog(savedInstanceState);
+        dialog.setTitle("Sessions");
+        return dialog;
+    }
+
     public void setReceiver(SessionPickerReceiver receiver) {
         this.receiver = receiver;
     }
@@ -142,7 +150,7 @@ public class SessionPickerFragment extends DialogFragment {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 if (receiver != null) {
                     receiver.receiveSessionItem(calendarItem, adapter.getItem(position));
-                dismiss();
+                    dismiss();
                 }
             }
         });
@@ -156,34 +164,35 @@ public class SessionPickerFragment extends DialogFragment {
         protected Void doInBackground(Void... params) {
 
             Cursor cursor = null;
-                try {
-                    cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
-                    ArrayList schedule = new ArrayList<ScheduleItem>(10);
-                    if (cursor != null && cursor.moveToNext()) {
-                        Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
-                        for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
-                            if (time == null) {
-                                Log.e(TAG, "time is null!!!");
-                            }
-                            Log.e(TAG, format.format(scheduleItem.fromTime) + " vs " + format.format(time));
-                            if (scheduleItem.fromTime.equals(time)) {
-                                schedule.add(scheduleItem);
-                            }
+            try {
+                cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
+                ArrayList schedule = new ArrayList<ScheduleItem>(10);
+                if (cursor != null && cursor.moveToNext()) {
+                    Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
+                    for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
+                        if (time == null) {
+                            Log.e(TAG, "time is null!!!");
                         }
-                    } else {
-                        //???
+                        Log.e(TAG, format.format(scheduleItem.fromTime) + " vs " + format.format(time));
+                        if (scheduleItem.fromTime.equals(time)) {
+                            schedule.add(scheduleItem);
+                        }
                     }
-                    SessionPickerFragment.schedule = schedule;
-
-                } finally {
-                    if (cursor != null) {
-                        cursor.close();
-                    }
+                } else {
+                    //???
                 }
+                SessionPickerFragment.schedule = schedule;
+
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
+            }
 
 
             return null;
         }
+
 
         @Override
         protected void onPostExecute(Void aVoid) {

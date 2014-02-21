@@ -9,6 +9,7 @@ import android.util.Log;
 import org.devnexus.auth.DevNexusAuthenticator;
 import org.devnexus.auth.GooglePlusAuthenticationModule;
 import org.devnexus.util.AccountUtil;
+import org.devnexus.util.Constants;
 import org.devnexus.vo.Schedule;
 import org.jboss.aerogear.android.Callback;
 import org.jboss.aerogear.android.authentication.AuthenticationConfig;
@@ -48,8 +49,8 @@ public class DevnexusApplication extends Application {
 
     static {
         try {
-            DEVNEXUS_URL = new URL("http://192.168.1.194:9090/s/");
-            PUSH_URL = new URI("http://192.168.1.194:8080/ag-push");
+            DEVNEXUS_URL = new URL(Constants.DEVNEXUS_URL);
+            PUSH_URL = new URI(Constants.PUSH_URL);
         } catch (MalformedURLException e) {
             Log.e(TAG, e.getMessage(), e);
             throw new RuntimeException(e);
@@ -66,9 +67,9 @@ public class DevnexusApplication extends Application {
 
 
         // Create a PushConfig for the UnifiedPush Server:
-        pushConfig = new PushConfig(PUSH_URL, "402595014005");
-        pushConfig.setVariantID("a26c1609-873e-427e-9106-7a6d435cbc78");
-        pushConfig.setSecret("5264fdc8-f0e6-480a-8725-f24caa9440e5");
+        pushConfig = new PushConfig(PUSH_URL, Constants.SENDER_ID);
+        pushConfig.setVariantID(Constants.VARIANT_ID);
+        pushConfig.setSecret(Constants.PUSH_SECRET);
 
     }
 

@@ -6,13 +6,14 @@ import android.database.Cursor;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.DialogFragment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.AdapterView;
 import android.widget.ListView;
+import android.widget.ProgressBar;
 
-import com.google.common.collect.Lists;
 import com.google.gson.Gson;
 
 import org.devnexus.DevnexusApplication;
@@ -38,15 +39,13 @@ public class TrackViewFragment extends DialogFragment {
     private SessionAdapter adapter;
 
     private List<ScheduleItem> schedule;
-    private ListView view;
+    private ListView listView;
     private static final Gson GSON = GsonUtils.GSON;
+    private ProgressBar progress;
+
 
     public static TrackViewFragment newInstance(String roomName) {
         Bundle args = new Bundle();
-
-        if (Lists.newArrayList("Ballroom C", "Ballroom D", "Ballroom F").contains(roomName)) {
-            roomName = "Ballroom CDF";
-        }
 
         args.putString(ROOM_NAME, roomName);
         TrackViewFragment frag = new TrackViewFragment();
@@ -79,6 +78,7 @@ public class TrackViewFragment extends DialogFragment {
                         if (cursor != null && cursor.moveToNext()) {
                             Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
                             for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
+                                Log.d("Room", scheduleItem.room.name);
                                 if (scheduleItem.room.name.equals(trackName)) {
                                     schedule.add(scheduleItem);
                                 }
@@ -105,9 +105,10 @@ public class TrackViewFragment extends DialogFragment {
                 }
 
                 adapter.notifyDataSetChanged();
-                if (view != null) {
-                    view.requestLayout();
-                    view.refreshDrawableState();
+                if (listView != null) {
+                    progress.setVisibility(View.GONE);
+                    listView.requestLayout();
+                    listView.refreshDrawableState();
                 }
             }
         }.executeOnExecutor(DevnexusApplication.EXECUTORS);
@@ -123,10 +124,12 @@ public class TrackViewFragment extends DialogFragment {
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
-        view = new ListView(inflater.getContext());
-        view.setAdapter(adapter);
+        View view = inflater.inflate(R.layout.session_picker, null);
+        progress = (ProgressBar) view.findViewById(R.id.progress);
+        listView = (ListView) view.findViewById(R.id.listView);
+        listView.setAdapter(adapter);
 
-        view.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+        listView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 UserCalendar userCal = new UserCalendar();

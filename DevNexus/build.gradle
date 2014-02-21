@@ -21,6 +21,20 @@ android {
         minSdkVersion 11
         targetSdkVersion 19
     }
+
+    signingConfigs {
+        release {
+            storeFile file("/home/summers/.android/debug.keystore")
+            storePassword "android"
+            keyAlias "release"
+            keyPassword "android"
+        }
+    }
+    buildTypes {
+        release {
+            signingConfig signingConfigs.release
+        }
+    }
 }
 
 dependencies {

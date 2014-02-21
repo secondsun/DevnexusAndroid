@@ -12,6 +12,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
+import android.widget.CheckBox;
 import android.widget.ImageView;
 import android.widget.TextView;
 
@@ -35,7 +36,7 @@ public class SessionDetailFragment extends DialogFragment implements CachingImag
         @Override
         public void onClick(View v) {
             receiver.receiveSessionItem(calendarSlot, scheduleItem);
-
+            ((CheckBox) view.findViewById(R.id.add_to_schedule_button)).setChecked(true);
             setText(R.id.add_to_schedule_button, "This session is on your calendar.");
             view.findViewById(R.id.add_to_schedule_button).setBackgroundResource(R.color.dn_blue);
             v.setOnClickListener(removeSession);
@@ -49,6 +50,7 @@ public class SessionDetailFragment extends DialogFragment implements CachingImag
             receiver.receiveSessionItem(calendarSlot, null);
             setText(R.id.add_to_schedule_button, "Add to Schedule");
             view.findViewById(R.id.add_to_schedule_button).setBackgroundResource(R.color.dn_white);
+            ((CheckBox) view.findViewById(R.id.add_to_schedule_button)).setChecked(false);
             v.setOnClickListener(addSession);
         }
     };
@@ -80,6 +82,7 @@ public class SessionDetailFragment extends DialogFragment implements CachingImag
             if (calendarSlot.item != null && scheduleItem.id == calendarSlot.item.id) {
                 setText(R.id.add_to_schedule_button, "This session is on your calendar.");
                 view.findViewById(R.id.add_to_schedule_button).setBackgroundResource(R.color.dn_blue);
+                ((CheckBox) view.findViewById(R.id.add_to_schedule_button)).setChecked(true);
                 addListener(R.id.add_to_schedule_button, removeSession);
             } else {
                 addListener(R.id.add_to_schedule_button, addSession);
