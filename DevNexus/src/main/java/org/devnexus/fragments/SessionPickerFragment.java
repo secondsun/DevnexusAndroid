@@ -46,7 +46,7 @@ public class SessionPickerFragment extends DialogFragment {
     private static final String TAG = SessionPickerFragment.class.getSimpleName();
     private SessionAdapter adapter;
     private UserCalendar calendarItem;
-    private static List<ScheduleItem> schedule;
+    private List<ScheduleItem> schedule;
     private SessionPickerReceiver receiver;
     private Date time;
     private ListView listView;
@@ -165,8 +165,14 @@ public class SessionPickerFragment extends DialogFragment {
 
             Cursor cursor = null;
             try {
-                cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
+                while (cursor == null || cursor.getCount() == 0 && !isCancelled()) {
+                    cursor = getActivity().getContentResolver().query(ScheduleContract.URI, null, null, null, null);
+                }
+                if (isCancelled()) {
+                    return null;
+                }
                 ArrayList schedule = new ArrayList<ScheduleItem>(10);
+
                 if (cursor != null && cursor.moveToNext()) {
                     Schedule scheduleFromDb = GSON.fromJson(cursor.getString(0), Schedule.class);
                     for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
@@ -181,7 +187,7 @@ public class SessionPickerFragment extends DialogFragment {
                 } else {
                     //???
                 }
-                SessionPickerFragment.schedule = schedule;
+                SessionPickerFragment.this.schedule = schedule;
 
             } finally {
                 if (cursor != null) {
