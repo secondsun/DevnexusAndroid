@@ -130,7 +130,6 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
                     return;
                 } catch (Exception e) {
                     headerAndBodyCallback.onFailure(e);
-                    throw new RuntimeException(e);
                 }
             }
         });
