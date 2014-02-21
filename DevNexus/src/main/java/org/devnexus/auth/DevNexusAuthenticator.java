@@ -73,7 +73,7 @@ public class DevNexusAuthenticator extends AbstractAccountAuthenticator {
             public void onSuccess(HeaderAndBody data) {
                 toReturn.putString(AccountManager.KEY_ACCOUNT_TYPE, account.type);
                 toReturn.putString(AccountManager.KEY_ACCOUNT_NAME, account.name);
-                toReturn.putString(AccountManager.KEY_AUTHTOKEN, AccountUtil.getCookie(app));
+                toReturn.putString(AccountManager.KEY_AUTHTOKEN, data.getHeader("Set-Cookie").toString());
                 latch.countDown();
             }
 
