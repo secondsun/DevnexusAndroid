@@ -42,7 +42,7 @@ public class GalleriaMapFragment extends Fragment implements
     private static final LatLng ROOM_103 = new LatLng(toDec(33, 53.067, 0), toDec(-84, 27.975, 0));
     private static final LatLng ROOM_104 = new LatLng(toDec(33, 53.065, 0), toDec(-84, 27.982, 0));
     private static final LatLng ROOM_105 = new LatLng(toDec(33, 53.063, 0), toDec(-84, 27.988, 0));
-    private static final LatLng ROOM_113 = new LatLng(toDec(33, 53.058, 0), toDec(-84, 28.995, 0));
+    private static final LatLng ROOM_113 = new LatLng(toDec(33, 53.058, 0), toDec(-84, 27.995, 0));
 
 
     // Initial camera position
