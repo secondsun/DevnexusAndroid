@@ -33,7 +33,7 @@
             android:layout_height="wrap_content"
             android:background="@android:color/transparent"
             android:textColor="@color/dn_black"
-            android:text="Welcome to the DevNexus companion app.  With this application you can view information about the conferece, manage your own custom schedule, interact with us online, and receive important information about the conference."
+            android:text="Welcome to the DevNexus companion app.  With this application you can view information about the conference, manage your own custom schedule, interact with us online, and receive important information about the conference."
             android:layout_marginBottom="10dp"
             android:fontFamily="sans-serif-light"
             android:layout_below="@+id/date"

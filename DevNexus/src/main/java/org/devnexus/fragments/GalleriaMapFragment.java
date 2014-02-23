@@ -34,12 +34,12 @@ public class GalleriaMapFragment extends Fragment implements
     private static final LatLng BALLROOM_B = new LatLng(toDec(33, 52.996, 0), toDec(-84, 28.030, 0));
     private static final LatLng BALLROOM_C = new LatLng(toDec(33, 52.984, 0), toDec(-84, 28.025, 0));
     private static final LatLng BALLROOM_D = new LatLng(toDec(33, 52.977, 0), toDec(-84, 28.022, 0));
-    private static final LatLng BALLROOM_E = new LatLng(toDec(33, 53.008, 0), toDec(-84, 28.014, 0));
-    private static final LatLng BALLROOM_F = new LatLng(toDec(33, 52.984, 0), toDec(-84, 28.005, 0));
+    private static final LatLng BALLROOM_E = new LatLng(toDec(33, 53.008, 0), toDec(-84, 28.020, 0));
+    private static final LatLng BALLROOM_F = new LatLng(toDec(33, 52.984, 0), toDec(-84, 28.010, 0));
     private static final LatLng BALLROOM_G = new LatLng(toDec(33, 52.990, 0), toDec(-84, 28.028, 0));
 
-    private static final LatLng ROOM_102 = new LatLng(toDec(33, 53.069, 0), toDec(-84, 27.970, 0));
-    private static final LatLng ROOM_103 = new LatLng(toDec(33, 53.067, 0), toDec(-84, 27.975, 0));
+    private static final LatLng ROOM_102 = new LatLng(toDec(33, 53.069, 0), toDec(-84, 27.973, 0));
+    private static final LatLng ROOM_103 = new LatLng(toDec(33, 53.067, 0), toDec(-84, 27.978, 0));
     private static final LatLng ROOM_104 = new LatLng(toDec(33, 53.065, 0), toDec(-84, 27.982, 0));
     private static final LatLng ROOM_105 = new LatLng(toDec(33, 53.063, 0), toDec(-84, 27.988, 0));
     private static final LatLng ROOM_113 = new LatLng(toDec(33, 53.058, 0), toDec(-84, 27.995, 0));
@@ -120,8 +120,8 @@ public class GalleriaMapFragment extends Fragment implements
                     CAMERA_GALLERIA, CAMERA_ZOOM)));
         }
 
-        mMap.setIndoorEnabled(false);
-        mMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+        mMap.setIndoorEnabled(true);
+        mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
         mMap.getUiSettings().setZoomControlsEnabled(false);
 
 
