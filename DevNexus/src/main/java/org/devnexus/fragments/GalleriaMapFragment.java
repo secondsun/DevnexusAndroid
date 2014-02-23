@@ -154,10 +154,12 @@ public class GalleriaMapFragment extends Fragment implements
 
     public void onDestroyView() {
         super.onDestroyView();
+        try {
         Fragment fragment = (getFragmentManager().findFragmentById(R.id.map));
         FragmentTransaction ft = getActivity().getSupportFragmentManager().beginTransaction();
         ft.remove(fragment);
         ft.commit();
+        } catch (Exception ignore) {}
     }
 
 }
