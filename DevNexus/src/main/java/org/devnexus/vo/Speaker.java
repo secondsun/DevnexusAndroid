@@ -1,9 +1,12 @@
 package org.devnexus.vo;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
 import java.io.Serializable;
 import java.util.Date;
 
-public class Speaker implements Serializable {
+public class Speaker implements Serializable, Parcelable {
     public int id;
     public Date createdDate;
     public Date updatedDate;
@@ -15,11 +18,26 @@ public class Speaker implements Serializable {
     public String googlePlusId;
     public String linkedInId;
 
+    public Speaker(){};
+
+    public Speaker(Parcel source) {
+        id = source.readInt();
+        createdDate = new Date(source.readLong());
+        updatedDate = new Date(source.readLong());
+        version = source.readInt();
+        bio = source.readString();
+        firstName = source.readString();
+        lastName = source.readString();
+        twitterId = source.readString();
+        googlePlusId = source.readString();
+        linkedInId = source.readString();
+    }
+
 
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (o == null || ((Object)this).getClass() != o.getClass()) return false;
 
         Speaker speaker = (Speaker) o;
 
@@ -58,4 +76,36 @@ public class Speaker implements Serializable {
         result = 31 * result + (linkedInId != null ? linkedInId.hashCode() : 0);
         return result;
     }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeInt(id);
+        dest.writeLong(createdDate.getTime());
+        dest.writeLong(updatedDate.getTime());
+        dest.writeInt(version);
+        dest.writeString(bio);
+        dest.writeString(firstName);
+        dest.writeString(lastName);
+        dest.writeString(twitterId);
+        dest.writeString(googlePlusId);
+        dest.writeString(linkedInId);
+    }
+
+    public static final Creator<Speaker> CREATOR = new Creator<Speaker>() {
+        @Override
+        public Speaker createFromParcel(Parcel source) {
+            return new Speaker(source);
+        }
+
+        @Override
+        public Speaker[] newArray(int size) {
+            return new Speaker[size];
+        }
+    };
+
 }

@@ -1,9 +1,14 @@
 package org.devnexus.vo;
 
+import android.os.Parcel;
+import android.os.Parcelable;
+
+import com.google.android.gms.internal.cr;
+
 import java.io.Serializable;
 import java.util.Date;
 
-public class Presentation implements Serializable {
+public class Presentation implements Serializable, Parcelable {
     public int id;
     public Date createdDate;
     public Date updatedDate;
@@ -16,10 +21,28 @@ public class Presentation implements Serializable {
     public String presentationType;
     public String skillLevel;
 
+    public Presentation() {
+
+    }
+
+    public Presentation(Parcel source) {
+        id = source.readInt();
+        createdDate = new Date(source.readLong());
+        updatedDate = new Date(source.readLong());
+        version = source.readInt();
+        audioLink = source.readString();
+        description = source.readString();
+        presentationLink = source.readString();
+        speaker = (Speaker) source.readParcelable(Speaker.class.getClassLoader());
+        title = source.readString();
+        presentationLink = source.readString();
+        skillLevel = source.readString();
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (o == null || (((Object)this).getClass()) != o.getClass()) return false;
 
         Presentation that = (Presentation) o;
 
@@ -60,4 +83,38 @@ public class Presentation implements Serializable {
         result = 31 * result + (skillLevel != null ? skillLevel.hashCode() : 0);
         return result;
     }
+
+    @Override
+    public int describeContents() {
+        return 0;
+    }
+
+    @Override
+    public void writeToParcel(Parcel dest, int flags) {
+        dest.writeInt(id);
+        dest.writeLong(createdDate.getTime());
+
+        dest.writeLong(updatedDate.getTime());
+        dest.writeInt(version);
+        dest.writeString(audioLink);
+        dest.writeString(description);
+        dest.writeString(presentationLink);
+        dest.writeParcelable(speaker, flags);
+        dest.writeString(title);
+        dest.writeString(presentationLink );
+        dest.writeString(skillLevel );
+    }
+
+    public static final Creator<Presentation> CREATOR = new Creator<Presentation>() {
+        @Override
+        public Presentation createFromParcel(Parcel source) {
+            return new Presentation(source);
+        }
+
+        @Override
+        public Presentation[] newArray(int size) {
+            return new Presentation[size];
+        }
+    };
+
 }
