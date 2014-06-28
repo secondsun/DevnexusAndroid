@@ -12,6 +12,7 @@ import java.util.Map;
 public class ResourceUtils {
 
     private static Map<String, Integer> cassValueMap = new HashMap<String, Integer>();
+    private static Map<String, Integer> gradientValueMap = new HashMap<String, Integer>();
 
 
     private static final int BALLROOM_A = "Ballroom A".hashCode();
@@ -37,6 +38,28 @@ public class ResourceUtils {
                 if (field.getName().toLowerCase().equals(trackId)) {
                     try {
                         cassValueMap.put(trackId, field.getInt(null));
+                    } catch (IllegalAccessException e) {
+                        return 0;
+                    }
+                }
+            }
+        }
+
+        return cassValueMap.get(trackId);
+
+    }
+
+    public static int trackCSSToGradient(String trackCSS) {
+        if (trackCSS == null) {
+            return R.drawable.gradient_dn_orange_red;
+        }
+
+        String trackId = trackCSS.replace("-", "_");
+        if (gradientValueMap.get(trackId) == null) {
+            for (Field field : R.drawable.class.getFields()) {
+                if (field.getName().toLowerCase().equals("gradient_" + trackId)) {
+                    try {
+                        gradientValueMap.put(trackId, field.getInt(null));
                     } catch (IllegalAccessException e) {
                         return 0;
                     }

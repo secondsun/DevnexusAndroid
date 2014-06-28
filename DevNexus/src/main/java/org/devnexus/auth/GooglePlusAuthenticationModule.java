@@ -105,6 +105,7 @@ public class GooglePlusAuthenticationModule extends AbstractAuthenticationModule
                     String loginRequest = new JSONObject(String.format("{\"gPlusId\":\"%s\",\"accessToken\":\"%s\"}", authMap.get(ACCOUNT_ID), accessToken)).toString();
 
                     HeaderAndBody result = provider.post(loginRequest);
+
                     cookie = result.getHeader("Set-Cookie").toString();
                     AccountUtil.setCookie(DevnexusApplication.CONTEXT, cookie);
                     isLoggedIn = true;

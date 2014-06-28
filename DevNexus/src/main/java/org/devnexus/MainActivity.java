@@ -1,12 +1,15 @@
 package org.devnexus;
 
 import android.content.res.Configuration;
+import android.database.Cursor;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v4.app.ActionBarDrawerToggle;
 import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBarActivity;
+import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
@@ -17,27 +20,42 @@ import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.TextView;
 
+import com.google.android.gms.internal.is;
+
 import org.devnexus.fragments.AboutFragment;
 import org.devnexus.fragments.GalleriaMapFragment;
+import org.devnexus.fragments.PresentationFragment;
 import org.devnexus.fragments.ScheduleFragment;
+import org.devnexus.fragments.SettingsFragment;
+import org.devnexus.util.GsonUtils;
+import org.devnexus.vo.Schedule;
+import org.devnexus.vo.ScheduleItem;
+import org.devnexus.vo.contract.ScheduleContract;
+
+import java.util.ArrayList;
+import java.util.List;
 
 public class MainActivity extends ActionBarActivity implements
         AdapterView.OnItemClickListener {
 
     private static final String TAG = MainActivity.class.getSimpleName();
 
-    private static final String[] NAVIGATION = new String[]{"Schedule", "Map", "About"};
+    private static final String[] NAVIGATION = new String[]{"Presentations", "Settings", "About"};
 
     private ListView drawerList;
     private DrawerLayout drawerLayout;
     private ActionBarDrawerToggle drawerToggle;
     private String drawerTitle = "Schedule";
+    private List<ScheduleItem> scheduleItems = new ArrayList<ScheduleItem>();
+    private PresentationFragment presentationFragment;
+    private SessionLoader loaderTask;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-
+        this.loaderTask = new SessionLoader();
+        loaderTask.executeOnExecutor(DevnexusApplication.EXECUTORS);
         showPager();
 
     }
@@ -76,10 +94,10 @@ public class MainActivity extends ActionBarActivity implements
                 ImageView icon = (ImageView) convertView.findViewById(R.id.icon);
                 switch (position) {
                     case 0:
-                        icon.setImageResource(android.R.drawable.ic_menu_my_calendar);
+                        icon.setImageResource(android.R.drawable.ic_menu_agenda);
                         break;
                     case 1:
-                        icon.setImageResource(android.R.drawable.ic_menu_mapmode);
+                        icon.setImageResource(android.R.drawable.ic_menu_manage);
                         break;
                     case 2:
                         icon.setImageResource(android.R.drawable.ic_menu_info_details);
@@ -163,10 +181,10 @@ public class MainActivity extends ActionBarActivity implements
         // Create a new fragment and specify the planet to show based on position
         FragmentManager fragmentManager = getSupportFragmentManager();
 
-        if (fragmentManager.getFragments().get(0) instanceof GalleriaMapFragment && position == 1) {
+        if (fragmentManager.getFragments().get(0) instanceof SettingsFragment && position == 1) {
             drawerLayout.closeDrawer(drawerList);
             return;
-        } else if (fragmentManager.getFragments().get(0) instanceof ScheduleFragment && position == 0) {
+        } else if (fragmentManager.getFragments().get(0) instanceof PresentationFragment && position == 0) {
             drawerLayout.closeDrawer(drawerList);
             return;
         } else if (fragmentManager.getFragments().get(0) instanceof AboutFragment && position == 2) {
@@ -196,13 +214,61 @@ public class MainActivity extends ActionBarActivity implements
     private Fragment getItem(int position) {
         switch (position) {
             case 0:
-                return new ScheduleFragment();
+                return (presentationFragment = PresentationFragment.newInstance(scheduleItems));
             case 1:
-                return new GalleriaMapFragment();
+                return new SettingsFragment();
             case 2:
                 return new AboutFragment();
         }
         return null;
     }
 
+    public void updateScheduleItems() {
+        if (presentationFragment != null) {
+            presentationFragment.updateItems(scheduleItems);
+        }
+    }
+
+    private class SessionLoader extends AsyncTask<Object, Object, Object> {
+
+        @Override
+        protected Object doInBackground(Object... params) {
+
+
+            Cursor cursor = null;
+            scheduleItems = new ArrayList<ScheduleItem>(10);
+            try {
+                cursor = getContentResolver().query(ScheduleContract.URI, null, null, null, null);
+
+                if (cursor != null && cursor.moveToNext()) {
+                    Schedule scheduleFromDb = GsonUtils.GSON.fromJson(cursor.getString(0), Schedule.class);
+                    for (ScheduleItem scheduleItem : scheduleFromDb.scheduleItemList.scheduleItems) {
+                        Log.d("Room", scheduleItem.room.name);
+                        scheduleItems.add(scheduleItem);
+                    }
+                } else {
+                    //???
+                }
+
+            } finally {
+                if (cursor != null) {
+                    cursor.close();
+                }
+            }
+
+
+            return null;
+        }
+
+        @Override
+        protected void onPostExecute(Object o) {
+            if (!isCancelled()) updateScheduleItems();
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        this.loaderTask.cancel(true);
+    }
 }
